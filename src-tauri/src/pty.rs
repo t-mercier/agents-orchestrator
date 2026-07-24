@@ -10,7 +10,7 @@ use tauri::{AppHandle, Emitter};
 /// Model passed to `claude --model`. `[1m]` selects the 1M-context variant — it is
 /// NOT a glob/regex, so every command embedding this must shell-quote it (otherwise
 /// the shell tries to glob-expand the `[…]` and the launch fails).
-pub const CLAUDE_MODEL: &str = "opus[1m]";
+pub const CLAUDE_MODEL: &str = "opus";
 
 struct Session {
     master: Box<dyn MasterPty + Send>,

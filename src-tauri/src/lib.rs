@@ -198,8 +198,8 @@ fn sanitize_session_name(name: &str) -> String {
 }
 
 /// Resume a session's full conversation in the user's terminal. sessionId is regex-
-/// restricted; the cwd is POSIX single-quoted, and `claude --model 'opus[1m]'`
-/// must stay quoted (the `[1m]` would otherwise be glob-expanded by the shell).
+/// restricted; the cwd is POSIX single-quoted, and the `--model` value is shell-quoted
+/// defensively (harmless for the plain `opus` alias, and safe if it ever grows brackets).
 #[tauri::command]
 fn open_in_terminal(cwd: String, session_id: String) -> Result<(), String> {
     if !is_valid_session_id(&session_id) {
