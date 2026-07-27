@@ -10,6 +10,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **A session could disappear from every tab** — a workspace whose `notes.md` history *credited* work done from another session (a `session=<id>` handoff line) was hidden as soon as that other session was live: dropped from **stale/closed/archived** as "already in Running", yet absent from **Running**, whose pidfile resolves to the other workspace. Only a live id registered to **no** workspace now counts as owning one, which is the de-registered-but-resumed case the check was written for.
+
 ## [0.3.1-alpha] - 2026-07-23
 
 ### Added
