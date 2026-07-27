@@ -709,6 +709,29 @@ fn notes_records_session(content: &str, sid: &str) -> bool {
     !sid.is_empty() && content.contains(&format!("session={sid}"))
 }
 
+/// Does this notes.md's history record a live session id that is registered to NO
+/// workspace? Such an orphan (an archived/closed session resumed directly) is relinked
+/// into Running by `recover_unregistered` through this same `session=<id>` line, so
+/// `scan_historical` must drop the workspace to avoid double-listing it.
+///
+/// A live id that IS registered is deliberately not an orphan. One registered to THIS
+/// path is already handled by the `active_notes` gate; one registered ELSEWHERE is
+/// another session merely CREDITED in this history (e.g. a "work done from the X
+/// session | session=<id>" handoff line). Counting that as ownership made the workspace
+/// vanish from every bucket at once — excluded from stale/closed/archived here, and
+/// absent from Running because the live pidfile resolves to the other notes.md.
+fn records_orphan_live_session(
+    content: &str,
+    running_ids: &HashSet<String>,
+    active: &Value,
+) -> bool {
+    running_ids.iter().any(|sid| {
+        let registered =
+            active.get(sid).and_then(|m| m.get("notes_path")).and_then(Value::as_str);
+        registered.is_none() && notes_records_session(content, sid)
+    })
+}
+
 /// A real Claude session id (UUID-ish: hex + hyphens, ≥32 chars). Filters out
 /// `/start-session` placeholders like `to fill (open the parallel session, …)`.
 fn is_resumable_sid(s: &str) -> bool {
@@ -1114,7 +1137,9 @@ fn scan_historical() -> Vec<Value> {
             // when it's de-registered from active-sessions.json (e.g. an archived/closed
             // session resumed directly). get_sessions recovers it into Running via the
             // same `session=<id>` history link, so exclude it here to avoid double-listing.
-            if running_ids.iter().any(|sid| notes_records_session(&content, sid)) {
+            // Only an UNREGISTERED live id counts as owning this workspace — a live id
+            // registered elsewhere is another session merely credited in this history.
+            if records_orphan_live_session(&content, &running_ids, &active_registry) {
                 continue;
             }
 
@@ -1280,6 +1305,44 @@ mod tests {
         // …an unrelated id is not, and an empty id never matches.
         assert!(!notes_records_session(content, "deadbeef-0000-0000-0000-000000000000"));
         assert!(!notes_records_session(content, ""));
+    }
+
+    #[test]
+    fn records_orphan_live_session_ignores_a_live_id_owned_by_another_workspace() {
+        use std::collections::HashSet;
+        // Regression: a history line can CREDIT work done from a different session. That
+        // id is live and registered to its OWN workspace, so it must not mark this one as
+        // live — doing so hid the workspace from stale/closed/archived while Running
+        // showed it under the other notes.md, i.e. it vanished from every tab.
+        let content = "## Session history\n\
+            - 2026-06-12 (work done from the GOSDK-214656 session) | \
+            session=04b11297-447a-49db-8c68-535cd35f7acf | committed the batch\n\
+            - 2026-06-26 | session=034a5675-0a10-40d1-804b-7b8df061ea09 | reviewed 2 PRs\n";
+        let mut running = HashSet::new();
+        running.insert("04b11297-447a-49db-8c68-535cd35f7acf".to_string());
+
+        let credited_elsewhere = json!({
+            "04b11297-447a-49db-8c68-535cd35f7acf": { "notes_path": "/w/BUG/GOSDK-214656/notes.md" }
+        });
+        assert!(!super::records_orphan_live_session(content, &running, &credited_elsewhere));
+
+        // A live id registered to NO workspace is the genuine orphan this gate exists for
+        // (an archived/closed session resumed directly) — recover_unregistered relinks it
+        // into Running via this same line, so the workspace must still be excluded here.
+        let unregistered = json!({});
+        assert!(super::records_orphan_live_session(content, &running, &unregistered));
+
+        // An entry without a notes_path is not a claim of ownership either → still orphan.
+        let entry_without_path = json!({ "04b11297-447a-49db-8c68-535cd35f7acf": { "category": "BUG" } });
+        assert!(super::records_orphan_live_session(content, &running, &entry_without_path));
+
+        // No live ids at all → nothing to exclude.
+        assert!(!super::records_orphan_live_session(content, &HashSet::new(), &unregistered));
+
+        // A live id this notes.md never records → not its owner.
+        let mut other = HashSet::new();
+        other.insert("deadbeef-0000-0000-0000-000000000000".to_string());
+        assert!(!super::records_orphan_live_session(content, &other, &unregistered));
     }
 
     #[test]
