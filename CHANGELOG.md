@@ -10,6 +10,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **A session could offer only Restart, never Resume** — when a `notes.md` carried a well-formed `session_id` whose transcript no longer existed (deleted, or a hand-edited/copied frontmatter), that dead id shadowed the ids registered to the same workspace that *did* have a conversation on disk. The fallback was gated on the id's **shape** rather than on whether its conversation still existed, so Resume stayed unavailable for that workspace permanently. The frontmatter id now wins only when its transcript is present; otherwise the newest registered resumable id is used.
+
 ## [0.3.1-alpha] - 2026-07-23
 
 ### Added
