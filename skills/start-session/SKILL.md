@@ -104,6 +104,30 @@ else:
 
 If empty, fall back to `SESSION_ID="unknown"`.
 
+## Step 4.5 — Collision guard (NEVER hijack an active session)
+
+`SESSION_ID` is **this terminal's** session. `/start-session` binds the current terminal to the new ticket — so if this terminal is ALREADY an active session for *different* work, proceeding would silently re-point the id to the new ticket and **detach the existing session** from the active list (its `notes.md` survives on disk, but it vanishes from the dashboard / `/list-sessions` active view). This has bitten us more than once: a session started to continue *already-underway* work must become its OWN session, not cannibalize the current one.
+
+```bash
+EXISTING=$(python3 - "$SESSION_ID" "$NOTES_PATH" <<'PY'
+import json, os, sys
+sid, target = sys.argv[1], sys.argv[2]
+p = os.path.expanduser('~/.claude/active-sessions.json')
+try: d = json.load(open(p))
+except Exception: d = {}
+cur = (d.get(sid) or {}).get('notes_path', '')
+# Collision only if this terminal is already bound to a DIFFERENT, still-existing workspace.
+if cur and os.path.abspath(cur) != os.path.abspath(target) and os.path.exists(cur):
+    print(cur)
+PY
+)
+```
+
+- **`$EXISTING` empty** → fresh terminal (or the id already points at this same workspace): proceed normally through Steps 5–9.
+- **`$EXISTING` non-empty** → this terminal is the live session for `$EXISTING`. Do NOT silently proceed. Use `AskUserQuestion`:
+  - **New session in a fresh terminal (default, recommended)** — keep this terminal on its current session. Still create the new workspace + real notes/brief (Step 6 + 6.5) so it's ready, but write its frontmatter `session_id:` **empty** and `branch:` as `to fill` (the new terminal creates the real branch on open), and **SKIP Step 7 (register), Step 8 (git sync) and Step 9 (rename)** — do not touch `active-sessions.json` or the current terminal's git branch. Then tell the user to open a new terminal (dashboard **+New**, or `claude` in a shell) and run `/restart-session <FOLDER>` to bind it there. Both sessions stay intact and recoverable.
+  - **Re-bind this terminal (only if the current work is truly done)** — proceed normally through Steps 5–9; the current session detaches (its `notes.md` stays on disk, reopen later with `/restart-session`).
+
 ## Step 5 — Resolve branch
 
 ```bash
@@ -179,6 +203,8 @@ Use the Edit tool to replace the `<one-line why — FILL IN>` and the `- [ ] …
 
 ## Step 7 — Register in active-sessions.json
 
+> **Skip this step** if Step 4.5's collision guard fired and the user chose "New session in a fresh terminal" — the workspace stays unbound (empty `session_id`) until `/restart-session` opens it elsewhere.
+
 ```bash
 python3 - <<EOF
 import json, os
@@ -224,6 +250,8 @@ fi
 Never use `--force`, `--no-verify`, or `--skip`. If it conflicts, abort and let the user resolve.
 
 ## Step 9 — Rename the session
+
+> **Skip this step** if Step 4.5's collision guard fired and the user chose "New session in a fresh terminal" — do not rename the current terminal, it still belongs to its existing session.
 
 ```bash
 NEW_NAME="$CATEGORY | $NAME"
