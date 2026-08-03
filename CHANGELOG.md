@@ -18,6 +18,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 ### Removed
 - **The Cards view is gone** — it overlapped the Kanban board without being as useful, so the app is now **List + Board**. The `▦ Cards` toggle, the cards grid and its topbar/search/filter are removed; the `v` shortcut, which used to flip list ⇄ cards, now flips **list ⇄ board** (so one key gets you back out of the board). Card **density** (Detailed / Compact / Minimal) stays — it now applies to the list cards only, and the Settings preview renders a list card to match. The detail slide-over + scrim remain, used by the Board.
 
+### Fixed
+- **A session skill can no longer hijack the terminal it runs in** — `/start-session`, `/restart-session` and `/import-session` all bind the current terminal's session id to a `notes.md` in `active-sessions.json`, and each did so unconditionally. Run one in a terminal that already held *different* work and the previous entry was silently overwritten: the `notes.md` survived on disk, but that session vanished from the dashboard and from `/list-sessions`. All three now check what the id already pointed at and ask before proceeding, offering to do the work in a fresh terminal instead. (`/start-session`'s guard existed locally but had never been carried into the repo, so a `--force` skills install dropped it.)
+
 ### Changed
 - **List view: pinned sessions float to the top of the whole column** — previously they floated per *space* (and, before that, per category), which defeated the point of a pin as your "current threads" shortlist. They now sit in one block at the top, cross-space, just below **⚡ Needs you** (blocked work still outranks a pin; a session that's both appears only under Needs you). No header and no category/space label on the cards — the filled bookmark stays the only marker.
 
