@@ -162,6 +162,11 @@ started_at: <NOW>
 ## Session history
 ```
 
+A new session starts with at most one PR and one ticket, so the template writes the plain
+`pr_link:` / `ticket:` keys. Should the work later span several (a task split across two
+PRs, an epic plus its sub-task), `/save-session` and `/close-session` add the extras as
+`pr_links:` / `tickets:` lists alongside these primaries — do not pre-write empty list keys here.
+
 ## Step 6.5 — Write real Goal and initial Next-steps plan
 
 Read the notes you just created. **DO NOT leave `<fill in>` placeholders.** Rewrite:

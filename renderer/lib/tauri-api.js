@@ -54,9 +54,17 @@
         .then((res) => ({ ok: true, ...(res || {}) }))
         .catch((e) => ({ ok: false, error: String(e) })),
 
-    // ── Set / update / clear a REVIEW session's reviewed-PR link (notes.md frontmatter) ──
-    setPrLink: (notesPath, url) =>
-      invoke('set_pr_link', { notesPath: notesPath || '', url: url || '' })
+    // ── Set / update / clear a session's PR links (notes.md frontmatter) ──
+    // A session can carry several PRs (one task split across two of them). The first
+    // entry becomes the primary `pr_link:`, the rest a `pr_links:` list; [] clears both.
+    setPrLinks: (notesPath, urls) =>
+      invoke('set_pr_links', { notesPath: notesPath || '', urls: urls || [] })
+        .then(() => ({ ok: true }))
+        .catch((e) => ({ ok: false, error: String(e) })),
+
+    // ── Same, for the tracker side: `ticket:` + `tickets:` ──
+    setTickets: (notesPath, tickets) =>
+      invoke('set_tickets', { notesPath: notesPath || '', tickets: tickets || [] })
         .then(() => ({ ok: true }))
         .catch((e) => ({ ok: false, error: String(e) })),
 

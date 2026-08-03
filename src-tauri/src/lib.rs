@@ -765,10 +765,23 @@ fn is_pr_url(url: &str) -> bool {
     parts[3].chars().next().is_some_and(|c| c.is_ascii_digit())
 }
 
-/// Insert / replace / clear the `pr_link:` line in the leading `---` frontmatter.
-/// Empty `url` removes the line (no stale link). Content with no frontmatter block
-/// is returned unchanged (every session notes.md has frontmatter).
-fn set_pr_link_in_frontmatter(content: &str, url: &str) -> String {
+/// Write a session's link list (PRs or tickets) into the leading `---` frontmatter,
+/// in the additive shape the reader expects (reader::frontmatter_values): the FIRST
+/// value goes on the `singular` line (`pr_link:` / `ticket:` — the primary, which the
+/// skills also write), any others follow as a `plural` block list:
+///
+/// ```yaml
+/// pr_link: https://github.com/o/r/pull/12
+/// pr_links:
+///   - https://github.com/o/r/pull/15
+/// ```
+///
+/// Both keys are rewritten from scratch each time, so dropping back to one value
+/// removes the now-empty `plural:` block and an empty list clears both — no stale
+/// link can survive. The list is written at the primary key's existing position when
+/// it had one (keeping frontmatter order stable), else appended. Content with no
+/// frontmatter block is returned unchanged (every session notes.md has frontmatter).
+fn set_frontmatter_links(content: &str, singular: &str, plural: &str, values: &[String]) -> String {
     let Some(rest) = content.strip_prefix("---\n") else {
         return content.to_string();
     };
@@ -776,20 +789,43 @@ fn set_pr_link_in_frontmatter(content: &str, url: &str) -> String {
         return content.to_string();
     };
     let (fm, tail) = (&rest[..end], &rest[end..]); // tail starts at "\n---…"
-    let mut lines: Vec<String> = Vec::new();
-    let mut found = false;
-    for l in fm.lines() {
-        if l.trim_start().starts_with("pr_link:") {
-            found = true;
-            if !url.is_empty() {
-                lines.push(format!("pr_link: {url}"));
-            }
-        } else {
-            lines.push(l.to_string());
+    // The replacement block: primary line + one item line per extra.
+    let mut block: Vec<String> = Vec::new();
+    if let Some((first, extras)) = values.split_first() {
+        block.push(format!("{singular}: {first}"));
+        if !extras.is_empty() {
+            block.push(format!("{plural}:"));
+            block.extend(extras.iter().map(|v| format!("  - {v}")));
         }
     }
-    if !found && !url.is_empty() {
-        lines.push(format!("pr_link: {url}"));
+
+    let mut lines: Vec<String> = Vec::new();
+    let mut placed = false;
+    let mut in_plural = false; // inside the old plural block → drop its item lines
+    for l in fm.lines() {
+        let key = l.split_once(':').map(|(k, _)| k.trim()).unwrap_or("");
+        if in_plural {
+            // A `- item` line still belongs to the old block; anything else ends it.
+            if reader::is_frontmatter_list_item(l) {
+                continue;
+            }
+            in_plural = false;
+        }
+        if key == plural {
+            in_plural = true;
+            continue; // replaced by `block` (emitted at the primary's position)
+        }
+        if key == singular {
+            if !placed {
+                lines.extend(block.iter().cloned());
+                placed = true;
+            }
+            continue;
+        }
+        lines.push(l.to_string());
+    }
+    if !placed {
+        lines.extend(block);
     }
     format!("---\n{}{}", lines.join("\n"), tail)
 }
@@ -886,18 +922,55 @@ fn delete_session(notes_path: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Set / update / clear the reviewed-PR link on a session (ADR-013 family — the app's
-/// 2nd bounded source-of-truth write). Validates a GitHub PR URL (empty = clear),
-/// then rewrites the `pr_link:` frontmatter line atomically, confined under a root.
+/// Trim, drop blanks and de-duplicate an incoming link list, preserving order. The
+/// editor is a free-text box (one entry per line), so blank lines and an accidentally
+/// pasted duplicate are expected input, not errors.
+fn clean_link_list(values: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for v in values {
+        let v = v.trim().to_string();
+        if !v.is_empty() && !out.iter().any(|x| x == &v) {
+            out.push(v);
+        }
+    }
+    out
+}
+
+/// Set / update / clear the PR links on a session (ADR-013 family — the app's 2nd
+/// bounded source-of-truth write). A session may carry SEVERAL PRs (one task split
+/// across two of them); every entry must be a GitHub PR URL, an empty list clears them.
+/// Rewrites the `pr_link:` / `pr_links:` frontmatter atomically, confined under a root.
 #[tauri::command(async)]
-fn set_pr_link(notes_path: String, url: String) -> Result<(), String> {
-    let url = url.trim();
-    if !url.is_empty() && !is_pr_url(url) {
-        return Err("not a GitHub PR URL (https://github.com/owner/repo/pull/N)".into());
+fn set_pr_links(notes_path: String, urls: Vec<String>) -> Result<(), String> {
+    let urls = clean_link_list(urls);
+    if let Some(bad) = urls.iter().find(|u| !is_pr_url(u)) {
+        return Err(format!(
+            "not a GitHub PR URL (https://github.com/owner/repo/pull/N): {bad}"
+        ));
     }
     let abs = notes_md_under_root(&notes_path)?;
     let content = std::fs::read_to_string(&abs).map_err(|e| e.to_string())?;
-    atomic_write(&abs, &set_pr_link_in_frontmatter(&content, url))
+    atomic_write(&abs, &set_frontmatter_links(&content, "pr_link", "pr_links", &urls))
+}
+
+/// Set / update / clear the tickets on a session — same contract as set_pr_links, for
+/// the tracker side (a task plus its sub-task). Ids are uppercased and must match the
+/// project-key form (ABC-123); an empty list clears them.
+///
+/// Only notes.md is written. active-sessions.json keeps mirroring the PRIMARY ticket
+/// alone (that's what the skills register and rename the session with), and the reader
+/// folds the registry ticket in front of this list — so the extras live in exactly one
+/// place and can't drift.
+#[tauri::command(async)]
+fn set_tickets(notes_path: String, tickets: Vec<String>) -> Result<(), String> {
+    let tickets: Vec<String> =
+        clean_link_list(tickets).into_iter().map(|t| t.to_uppercase()).collect();
+    if let Some(bad) = tickets.iter().find(|t| !is_ticket(t)) {
+        return Err(format!("not a ticket id (ABC-123): {bad}"));
+    }
+    let abs = notes_md_under_root(&notes_path)?;
+    let content = std::fs::read_to_string(&abs).map_err(|e| e.to_string())?;
+    atomic_write(&abs, &set_frontmatter_links(&content, "ticket", "tickets", &tickets))
 }
 
 /// Has this session's notes.md been freshly wrapped up (a `/close-session` write) since
@@ -1183,7 +1256,8 @@ pub fn run() {
             import_settings,
             archive_session,
             delete_session,
-            set_pr_link,
+            set_pr_links,
+            set_tickets,
             notes_closed_since,
             close_session,
             can_reveal_terminal,
@@ -1212,8 +1286,9 @@ mod tests {
     use super::{
         category_root_dir, is_deletable_session_dir, is_pr_url, is_safe_branch, is_safe_category,
         is_safe_slug, is_ticket, is_valid_session_id, parse_usage, percent_encode, sanitize_session_name,
-        set_pr_link_in_frontmatter, slugify, stamp_archived, usage_view, validate_root_override,
+        set_frontmatter_links, slugify, stamp_archived, usage_view, validate_root_override,
     };
+    use crate::reader;
     use serde_json::{json, Value};
     use std::path::PathBuf;
 
@@ -1392,35 +1467,68 @@ mod tests {
 
     const FM: &str = "---\nname: x\ncategory: REVIEW\nbranch: feat/y\n---\n\n# x\nbody\n";
 
+    /// Helper: the PR-list write, which is the interesting instantiation.
+    fn set_prs(content: &str, urls: &[&str]) -> String {
+        let v: Vec<String> = urls.iter().map(|s| s.to_string()).collect();
+        set_frontmatter_links(content, "pr_link", "pr_links", &v)
+    }
+
     #[test]
-    fn pr_link_inserts_when_absent() {
-        let out = set_pr_link_in_frontmatter(FM, "https://github.com/o/r/pull/5");
+    fn one_link_writes_the_primary_key_only() {
+        let out = set_prs(FM, &["https://github.com/o/r/pull/5"]);
         assert!(out.contains("pr_link: https://github.com/o/r/pull/5"));
+        assert!(!out.contains("pr_links:")); // no empty extras block
         // Other keys + body preserved, single frontmatter block.
         assert!(out.contains("category: REVIEW") && out.contains("# x\nbody"));
         assert_eq!(out.matches("\n---").count(), 1);
     }
 
     #[test]
-    fn pr_link_replaces_existing() {
-        let with = set_pr_link_in_frontmatter(FM, "https://github.com/o/r/pull/1");
-        let out = set_pr_link_in_frontmatter(&with, "https://github.com/o/r/pull/2");
-        assert!(out.contains("pull/2") && !out.contains("pull/1"));
-        assert_eq!(out.matches("pr_link:").count(), 1);
+    fn extra_links_go_to_the_plural_block() {
+        let out = set_prs(FM, &["https://github.com/o/r/pull/5", "https://github.com/o/r/pull/9"]);
+        assert!(out.contains("pr_link: https://github.com/o/r/pull/5"));
+        assert!(out.contains("pr_links:\n  - https://github.com/o/r/pull/9"));
+        // The reader reads back exactly what was written, in order.
+        assert_eq!(
+            reader::frontmatter_values(&out, "pr_link", "pr_links"),
+            vec!["https://github.com/o/r/pull/5", "https://github.com/o/r/pull/9"]
+        );
     }
 
     #[test]
-    fn pr_link_empty_clears_the_line() {
-        let with = set_pr_link_in_frontmatter(FM, "https://github.com/o/r/pull/1");
-        let out = set_pr_link_in_frontmatter(&with, "");
-        assert!(!out.contains("pr_link:"));
+    fn rewrite_replaces_the_whole_list_and_keeps_position() {
+        let two = set_prs(FM, &["https://github.com/o/r/pull/1", "https://github.com/o/r/pull/2"]);
+        // Back down to one → the extras block goes away entirely.
+        let one = set_prs(&two, &["https://github.com/o/r/pull/2"]);
+        assert!(one.contains("pr_link: https://github.com/o/r/pull/2"));
+        assert!(!one.contains("pr_links:") && !one.contains("pull/1"));
+        assert_eq!(one.matches("pr_link:").count(), 1);
+        // The list stays where the primary key already sat (before `started_at`).
+        let ordered = "---\nname: x\npr_link: https://github.com/o/r/pull/1\nstarted_at: t\n---\nbody";
+        let out = set_prs(ordered, &["https://github.com/o/r/pull/3", "https://github.com/o/r/pull/4"]);
+        assert!(out.contains("name: x\npr_link: https://github.com/o/r/pull/3\npr_links:\n  - https://github.com/o/r/pull/4\nstarted_at: t"));
+    }
+
+    #[test]
+    fn empty_list_clears_both_keys() {
+        let two = set_prs(FM, &["https://github.com/o/r/pull/1", "https://github.com/o/r/pull/2"]);
+        let out = set_prs(&two, &[]);
+        assert!(!out.contains("pr_link") && !out.contains("pull/"));
         assert!(out.contains("category: REVIEW")); // rest intact
+        assert_eq!(out.matches("\n---").count(), 1);
     }
 
     #[test]
-    fn pr_link_noop_without_frontmatter() {
+    fn tickets_use_the_same_writer() {
+        let v = vec!["FEAT-1".to_string(), "FEAT-2".to_string()];
+        let out = set_frontmatter_links(FM, "ticket", "tickets", &v);
+        assert!(out.contains("ticket: FEAT-1\ntickets:\n  - FEAT-2"));
+    }
+
+    #[test]
+    fn links_noop_without_frontmatter() {
         let plain = "# no frontmatter\nbody\n";
-        assert_eq!(set_pr_link_in_frontmatter(plain, "https://github.com/o/r/pull/1"), plain);
+        assert_eq!(set_prs(plain, &["https://github.com/o/r/pull/1"]), plain);
     }
 
     #[test]

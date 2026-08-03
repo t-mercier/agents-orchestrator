@@ -103,17 +103,35 @@ Skip noise (don't list every read/grep). **Re-validate Goal** if it's drifted (r
 
 ## Step 5 — Frontmatter refresh (auto-attach PR / ticket)
 
-Deterministic source: `gh pr view --json url -q .url` on the current branch (session's repo). If it returns a valid GitHub PR URL (`https://github.com/owner/repo/pull/N`) → use it.
-Fallback: if no `gh`/repo, use the PR Claude created/manipulated in THIS conversation (scan the conversation for any GitHub PR URL).
+A session can reference SEVERAL PRs and tickets — one task split across two PRs, or an
+epic plus its sub-task. The frontmatter holds them as a primary value plus a list of
+extras, and this step **APPENDS** to that list; it never replaces what's already there:
 
-Update `pr_link:` in the frontmatter (Edit tool) **only if empty or different**. NEVER overwrite a value with empty.
+```yaml
+pr_link: https://github.com/o/r/pull/12    # primary — shown on the card
+pr_links:                                  # extras, in order (omit the key when there are none)
+  - https://github.com/o/r/pull/15
+ticket: FEAT-1842
+tickets:
+  - FEAT-1877
+```
 
-If a ticket matching `^[A-Za-z][A-Za-z0-9]*-[0-9]+$` was created/identified in the session and `ticket:` is empty:
-1. Uppercase it.
-2. Update `ticket:` in the frontmatter.
-3. Patch `active-sessions.json` by reading the current entry for `SESSION_ID` and MERGING: set only `ticket`, preserve `notes_path`, `category`, `name`, `started_at` (do NOT replace the whole entry).
+Collect every PR URL this session is about:
+- Deterministic source: `gh pr view --json url -q .url` on the current branch (session's repo). A valid GitHub PR URL (`https://github.com/owner/repo/pull/N`) → use it.
+- Also the PRs Claude created/manipulated in THIS conversation (scan it for GitHub PR URLs) — that's how the session's *other* PR is found, since `gh` only ever reports the current branch's.
 
-The `prPill` icon fills automatically once the frontmatter is right.
+Then, with the Edit tool: add any URL **not already** in `pr_link:` / `pr_links:`, keeping
+the existing primary as the primary (a session's first PR stays its headline). Write extras
+as `pr_links:` list items. NEVER remove a link and NEVER overwrite a value with empty — the
+dashboard's PR editor is where links get pruned, deliberately.
+
+Same for tickets matching `^[A-Za-z][A-Za-z0-9]*-[0-9]+$` created/identified in the session:
+1. Uppercase them.
+2. Add any that aren't already in `ticket:` / `tickets:` (primary first, extras as list items).
+3. If `ticket:` was empty and you just filled it, patch `active-sessions.json` by reading the current entry for `SESSION_ID` and MERGING: set only `ticket`, preserve `notes_path`, `category`, `name`, `started_at` (do NOT replace the whole entry). The registry mirrors the PRIMARY ticket only — extras live in notes.md alone.
+
+The dashboard's ticket / PR icons fill automatically once the frontmatter is right; with
+several links they show a count badge and open a picker.
 
 ## Step 5b — Update notes.md sections
 

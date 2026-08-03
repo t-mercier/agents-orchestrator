@@ -95,7 +95,9 @@ function buildMetaRows(s, isHistorical) {
     !isHistorical && s.cwd ? metaRow('Working directory', pathLink(s.cwd)) : '',
     (s.gitBranch || s.branch) ? metaRow('Branch', `🌿 ${escapeHtml(s.gitBranch || s.branch)}`) : '',
     !isHistorical && s.worktree ? metaRow('Worktree', pathLink(s.worktree, '🗂 ')) : '',
-    s.category ? metaRow('Category', `${escapeHtml(s.category)}${s.ticket ? ` · ${escapeHtml(s.ticket)}` : ''}`) : '',
+    // Every ticket, not just the primary — the meta row is where a session's full
+    // reference list is spelled out (the card only has room for "FEAT-1 +1").
+    s.category ? metaRow('Category', `${escapeHtml(s.category)}${ticketsOf(s).length ? ` · ${escapeHtml(ticketsOf(s).join(' · '))}` : ''}`) : '',
     s.root ? metaRow('Space', escapeHtml(String(s.root))) : '',
     isHistorical && s.startedAt ? metaRow('Started', escapeHtml(s.startedAt)) : '',
     lastUpdate ? metaRow('Last update', escapeHtml(lastUpdate)) : '',
@@ -206,9 +208,9 @@ function firstNextStep(nextSteps) {
 // density, hidden in minimal (CSS). Returns '' when the session has none of the three.
 function cardIcons(s) {
   // Ticket as a number label (consistent with the board); PR + notes stay as icons.
-  // (No space label anywhere — list/cards group into space sections, PINNED lives
-  // inside its space, and the board filters by space.)
-  const icons = [ticketChip(s.ticket), prPill(s.prLink), notesPill(s.notesPath)].filter(Boolean).join('')
+  // (No space label anywhere — the list groups into space sections, PINNED floats
+  // above them all, and the board filters by space.)
+  const icons = [ticketChip(s), prPill(s), notesPill(s.notesPath)].filter(Boolean).join('')
   return icons ? `<div class="card-icons">${icons}</div>` : ''
 }
 
@@ -493,6 +495,7 @@ function renderPanelList(sessions, selectedKey, changedKeys) {
   setHtml(document.getElementById('panel-list'), html)
 }
 
+// ── Right panel: session detail ──
 // ── Cards view: full-width grid ──
 
 function renderSessionCard(s, selectedKey, changed) {
@@ -557,7 +560,6 @@ function renderCardsGrid(sessions, selectedKey, changedKeys = new Set()) {
   setHtml(document.getElementById('cards-grid'), html)
 }
 
-// ── Right panel: session detail ──
 
 // Actions are an icon toolbar: a service logo where there is one (Jira/GitHub,
 // vendored under renderer/icons/), a clean line-icon otherwise, each with a hover
@@ -615,47 +617,128 @@ const ICON_TICKET = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
 // GitHub mark as currentColor (not a fixed-white asset) → legible on both light & dark themes.
 const ICON_GITHUB = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>`
 
-function ticketPill(ticket) {
-  // Guard against junk values (e.g. a frontmatter `ticket: ""` that survived as quotes)
-  if (!ticket || !/[a-z0-9]/i.test(ticket)) return ''
+// ── Link lists (PRs / tickets) ──
+// A session can reference SEVERAL PRs and tickets — one task split across two PRs, or
+// an epic plus its sub-task. The backend sends the whole ordered list (prLinks /
+// tickets) plus the primary as prLink / ticket; these read the list and fall back to
+// the primary so an older payload still renders.
+function linksOf(s, listKey, primaryKey) {
+  const list = Array.isArray(s[listKey]) ? s[listKey].filter(Boolean) : []
+  if (list.length) return list
+  return s[primaryKey] ? [s[primaryKey]] : []
+}
+const prLinksOf = (s) => linksOf(s, 'prLinks', 'prLink')
+// Junk guard: a frontmatter `ticket: ""` that survived as quotes is not a ticket.
+const ticketsOf = (s) => linksOf(s, 'tickets', 'ticket').filter(t => /[a-z0-9]/i.test(t))
+// Explicit exports — a top-level `const` in a classic script is NOT a window property,
+// and board.js renders the same link chips.
+window.prLinksOf = prLinksOf
+window.ticketsOf = ticketsOf
+
+// `owner/repo#123` from a PR URL — the label in the picker popover. Parsed locally
+// (no API call), so it works offline and without a GitHub token; falls back to the
+// raw URL if the shape is unexpected.
+function prLabel(url) {
+  const m = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/.exec(url || '')
+  return m ? `${m[1]}/${m[2]}#${m[3]}` : (url || '')
+}
+
+const ticketUrl = (t) => {
+  const base = (window.CSM_CONFIG && window.CSM_CONFIG.ticketBaseUrl) || ''
+  return base ? base + t : ''
+}
+
+// The picker button carries only (kind, session key) — the menu's contents are derived
+// from the live session at CLICK time, never stashed at render time. That matters
+// because setHtml skips the DOM rewrite when the markup is unchanged: any render-time
+// registry would keep growing on each poll while the DOM held ids from an older render.
+function linkMenuAttrs(kind, s) {
+  return `data-linkmenu="${kind}" data-linkmenu-key="${escapeHtml(sessionKey(s))}"`
+}
+
+// Resolve a picker button back to its menu payload: the session's links, labelled.
+function linkMenuFor(s, kind) {
+  if (!s) return null
+  if (kind === 'ticket') {
+    const tickets = ticketsOf(s)
+    return { kind, head: `Tickets · ${tickets.length}`, notesPath: s.notesPath || '',
+      items: tickets.map(t => ({ label: t, url: ticketUrl(t) })) }
+  }
+  const prs = prLinksOf(s)
+  return { kind, head: `Pull requests · ${prs.length}`, notesPath: s.notesPath || '',
+    items: prs.map(u => ({ label: prLabel(u), url: u })) }
+}
+
+function ticketPill(s) {
+  const tickets = ticketsOf(s)
   // Only show the icon when it can actually open something — i.e. a tracker base URL
   // is configured (Jira, Linear, GitHub Issues, Azure DevOps…). Without one, a dead
   // icon just confuses; the ticket id still shows in the detail meta row.
-  const base = (window.CSM_CONFIG && window.CSM_CONFIG.ticketBaseUrl) || ''
-  if (!base) return ''
-  const url = escapeHtml(base + ticket)
-  return `<button class="act pill" data-url="${url}" aria-label="${escapeHtml(ticket)}" data-tip="${escapeHtml(ticket)} · open ticket">${ICON_TICKET}</button>`
+  if (!tickets.length || !ticketUrl(tickets[0])) return ''
+  if (tickets.length === 1) {
+    const t = tickets[0]
+    return `<button class="act pill" data-url="${escapeHtml(ticketUrl(t))}" aria-label="${escapeHtml(t)}" data-tip="${escapeHtml(t)} · open ticket">${ICON_TICKET}</button>`
+  }
+  return `<button class="act pill multi" ${linkMenuAttrs('ticket', s)} aria-label="${tickets.length} tickets" data-tip="${tickets.length} tickets · pick one">${ICON_TICKET}<span class="multi-count">${tickets.length}</span></button>`
 }
 
 // Ticket as a NUMBER label (e.g. FEAT-1842) for list + card views — the id reads at a
-// glance, matching the board's chip. Clickable when a tracker URL is configured, a
-// plain label otherwise (the detail toolbar still uses the compact icon, ticketPill).
-function ticketChip(ticket) {
-  if (!ticket || !/[a-z0-9]/i.test(ticket)) return ''
-  const label = escapeHtml(ticket)
-  const base = (window.CSM_CONFIG && window.CSM_CONFIG.ticketBaseUrl) || ''
-  if (!base) return `<span class="ticket-tag" title="${label}">${label}</span>`
-  return `<button class="ticket-tag ticket-chip" data-url="${escapeHtml(base + ticket)}" data-tip="${label} · open ticket">${label}</button>`
+// glance, matching the board's chip. Extra tickets show as a `+N` suffix and turn the
+// chip into a picker. Clickable when a tracker URL is configured, a plain label
+// otherwise (the detail toolbar uses the compact icon, ticketPill).
+function ticketChip(s) {
+  const tickets = ticketsOf(s)
+  if (!tickets.length) return ''
+  const label = escapeHtml(tickets[0])
+  const extra = tickets.length > 1 ? `<span class="multi-suffix">+${tickets.length - 1}</span>` : ''
+  if (!ticketUrl(tickets[0])) return `<span class="ticket-tag" title="${label}">${label}${extra}</span>`
+  if (tickets.length === 1) {
+    return `<button class="ticket-tag ticket-chip" data-url="${escapeHtml(ticketUrl(tickets[0]))}" data-tip="${label} · open ticket">${label}</button>`
+  }
+  return `<button class="ticket-tag ticket-chip multi" ${linkMenuAttrs('ticket', s)} data-tip="${tickets.length} tickets · pick one">${label}${extra}</button>`
 }
 
-function prPill(prLink) {
-  if (!prLink) return ''
-  return `<button class="act pill" data-url="${escapeHtml(prLink)}" aria-label="Pull request" data-tip="Open PR on GitHub">${ICON_GITHUB}</button>`
+// The GitHub icon for a session's PRs: one link opens straight away (unchanged),
+// several show a count badge and open the picker.
+function prPill(s) {
+  const prs = prLinksOf(s)
+  if (!prs.length) return ''
+  if (prs.length === 1) {
+    return `<button class="act pill" data-url="${escapeHtml(prs[0])}" aria-label="Pull request" data-tip="Open ${escapeHtml(prLabel(prs[0]))} on GitHub">${ICON_GITHUB}</button>`
+  }
+  return `<button class="act pill multi" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull requests" data-tip="${prs.length} PRs · pick one">${ICON_GITHUB}<span class="multi-count">${prs.length}</span></button>`
 }
 
-// The PR control. Non-REVIEW: just the GitHub link if one exists. REVIEW (with a
-// writable notes.md): the GitHub link + a ✎ to edit, or a "＋ Add PR link" button
-// when none is set yet. The ✎ / ＋ open the inline PR editor (set_pr_link).
-function prControl(s) {
-  if ((s.category || '') !== 'REVIEW' || !s.notesPath) return prPill(s.prLink)
+// The ticket control in the detail toolbar — the tracker-side twin of prControl.
+// Editable on any session with a notes.md (a task can grow a sub-task); the plain
+// pill only when there's nothing to write to.
+function ticketControl(s) {
+  if (!s.notesPath) return ticketPill(s)
   const notes = escapeHtml(s.notesPath)
   const editIcon = svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
-  if (s.prLink) {
-    return prPill(s.prLink) +
-      `<button class="act" data-pr-edit="${notes}" aria-label="Edit PR link" data-tip="Edit PR link">${editIcon}</button>`
+  if (ticketsOf(s).length) {
+    // ticketPill is empty when no tracker base URL is configured — then the ids are
+    // only shown in the meta row, but they must still be editable.
+    return (ticketPill(s) || `<span class="act pr-add" title="${escapeHtml(ticketsOf(s).join(' · '))}">${ICON_TICKET}</span>`) +
+      `<button class="act" data-ticket-edit="${notes}" aria-label="Edit tickets" data-tip="Edit tickets">${editIcon}</button>`
+  }
+  return `<button class="act pr-add" data-ticket-edit="${notes}" aria-label="Add ticket" data-tip="Attach a ticket">${ICON_TICKET}</button>`
+}
+
+// The PR control in the detail toolbar. Any session with a writable notes.md can
+// attach PRs (a FEAT task routinely spans two of them — it isn't a REVIEW-only
+// concern): the link/picker plus a ✎ to edit, or a dimmed ＋ when none is set yet.
+// Sessions with no notes.md (unmanaged) get the plain link only — nothing to write to.
+function prControl(s) {
+  if (!s.notesPath) return prPill(s)
+  const notes = escapeHtml(s.notesPath)
+  const editIcon = svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
+  if (prLinksOf(s).length) {
+    return prPill(s) +
+      `<button class="act" data-pr-edit="${notes}" aria-label="Edit PR links" data-tip="Edit PR links">${editIcon}</button>`
   }
   // No link yet → a dimmed GitHub icon that opens the editor to attach one.
-  return `<button class="act pr-add" data-pr-edit="${notes}" aria-label="Add PR link" data-tip="Add PR to review">${ICON_GITHUB}</button>`
+  return `<button class="act pr-add" data-pr-edit="${notes}" aria-label="Add PR link" data-tip="Attach a PR">${ICON_GITHUB}</button>`
 }
 
 // A session can only be resumed if it has a real session id (UUID-ish, no spaces).
@@ -727,9 +810,64 @@ function openInfoPopover(anchor) {
   }, 0)
 }
 
-// Inline editor for a REVIEW session's PR link → window.api.setPrLink (writes the
-// notes.md frontmatter). Save validates the URL; Remove clears it. Reuses the
-// outside-click / Esc dismiss pattern.
+// ── Link picker popover ──
+// Shown when a session has SEVERAL PRs / tickets: pick which one to open. Reuses the
+// board menu's geometry + dismiss pattern. The last row opens the editor, so the
+// popover is also the way in to attaching another link.
+function closeLinkMenu() {
+  const m = document.getElementById('link-menu')
+  if (m) m.remove()
+  document.removeEventListener('click', linkMenuOutside, true)
+  document.removeEventListener('keydown', linkMenuEsc, true)
+}
+function linkMenuOutside(e) {
+  if (!e.target.closest('#link-menu') && !e.target.closest('[data-linkmenu]')) closeLinkMenu()
+}
+function linkMenuEsc(e) { if (e.key === 'Escape') closeLinkMenu() }
+function openLinkMenu(anchor, menu) {
+  closeLinkMenu()
+  const pop = document.createElement('div')
+  pop.className = 'board-menu link-menu'
+  pop.id = 'link-menu'
+  const editLabel = menu.kind === 'pr' ? 'Add / edit PRs…' : 'Add / edit tickets…'
+  pop.innerHTML =
+    `<div class="board-menu-head">${escapeHtml(menu.head)}</div>` +
+    menu.items.map((it, i) =>
+      `<button class="board-menu-item" data-link-open="${i}"${it.url ? '' : ' disabled'}>` +
+      `<span class="board-menu-check">›</span><span class="board-menu-name">${escapeHtml(it.label)}</span></button>`
+    ).join('') +
+    // Editing needs a writable notes.md — an unmanaged session has none.
+    (menu.notesPath
+      ? `<div class="board-menu-sep"></div><button class="board-menu-item link-menu-edit">${editLabel}</button>`
+      : '')
+  document.body.appendChild(pop)
+  positionPopover(pop, anchor)
+  pop.querySelectorAll('[data-link-open]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const it = menu.items[Number(btn.dataset.linkOpen)]
+      if (it && it.url) window.api.openExternal(it.url)
+      closeLinkMenu()
+    })
+  })
+  const edit = pop.querySelector('.link-menu-edit')
+  if (edit) {
+    edit.addEventListener('click', () => {
+      closeLinkMenu()
+      openLinkEditor(anchor, menu.kind, menu.notesPath)
+    })
+  }
+  setTimeout(() => {
+    document.addEventListener('click', linkMenuOutside, true)
+    document.addEventListener('keydown', linkMenuEsc, true)
+  }, 0)
+}
+
+// ── Inline link editor ──
+// One entry per line → window.api.setPrLinks / setTickets (which rewrite the notes.md
+// frontmatter). A textarea rather than N inputs: it makes "paste the second PR on a new
+// line" the whole interaction, and reordering (the first line is the primary shown on
+// the card) is just editing text. Empty box = clear them all. Reuses the outside-click /
+// Esc dismiss pattern.
 function closePrEditor() {
   const m = document.getElementById('pr-editor')
   if (m) m.remove()
@@ -737,37 +875,73 @@ function closePrEditor() {
   document.removeEventListener('keydown', prEditorEsc, true)
 }
 function prEditorOutside(e) {
-  if (!e.target.closest('#pr-editor') && !e.target.closest('[data-pr-edit]')) closePrEditor()
+  if (!e.target.closest('#pr-editor') && !e.target.closest('[data-pr-edit]')
+      && !e.target.closest('[data-ticket-edit]')) closePrEditor()
 }
 function prEditorEsc(e) { if (e.key === 'Escape') closePrEditor() }
-function openPrEditor(anchor, notesPath, currentUrl) {
+
+// The per-kind bits: heading, placeholder, per-line validation, and the write call.
+const LINK_EDITORS = {
+  pr: {
+    head: 'Pull requests',
+    hint: 'One PR URL per line — the first is the one shown on the card.',
+    placeholder: 'https://github.com/owner/repo/pull/123',
+    invalid: (v) => (typeof isPrUrl === 'function' && !isPrUrl(v))
+      ? `Not a GitHub PR URL: ${v}` : '',
+    save: (notesPath, values) => window.api.setPrLinks(notesPath, values),
+    current: (s) => prLinksOf(s),
+  },
+  ticket: {
+    head: 'Tickets',
+    hint: 'One ticket id per line — the first is the one shown on the card.',
+    placeholder: 'FEAT-1842',
+    invalid: (v) => /^[A-Za-z][A-Za-z0-9]*-[0-9]+$/.test(v) ? '' : `Not a ticket id: ${v}`,
+    save: (notesPath, values) => window.api.setTickets(notesPath, values),
+    current: (s) => ticketsOf(s),
+  },
+}
+
+function openLinkEditor(anchor, kind, notesPath) {
   closePrEditor()
+  const spec = LINK_EDITORS[kind] || LINK_EDITORS.pr
+  // Current values come from the selected session (or the one the terminal shows) —
+  // same resolution the info popover uses.
+  let sel = (window._lastSessions || []).find(x => sessionKey(x) === window._lastSelectedKey)
+  if (!sel || (sel.notesPath || '') !== notesPath) {
+    sel = (window._lastSessions || []).find(x => (x.notesPath || '') === notesPath) || sel
+  }
+  const values = sel ? spec.current(sel) : []
   const pop = document.createElement('div')
   pop.className = 'pr-editor'
   pop.id = 'pr-editor'
   pop.innerHTML =
-    `<div class="pr-editor-head">PR to review</div>` +
-    `<input class="pr-editor-input" type="text" spellcheck="false" autocomplete="off" placeholder="https://github.com/owner/repo/pull/123" value="${escapeHtml(currentUrl || '')}">` +
+    `<div class="pr-editor-head">${escapeHtml(spec.head)}</div>` +
+    `<div class="pr-editor-hint">${escapeHtml(spec.hint)}</div>` +
+    `<textarea class="pr-editor-input" rows="3" spellcheck="false" autocomplete="off"
+       placeholder="${escapeHtml(spec.placeholder)}">${escapeHtml(values.join('\n'))}</textarea>` +
     `<div class="pr-editor-err" hidden></div>` +
-    `<div class="pr-editor-actions">${currentUrl ? `<button class="pr-editor-btn pr-editor-remove">Remove</button>` : ''}<button class="pr-editor-btn pr-editor-save">Save</button></div>`
+    `<div class="pr-editor-actions">${values.length ? `<button class="pr-editor-btn pr-editor-remove">Remove all</button>` : ''}<button class="pr-editor-btn pr-editor-save">Save</button></div>`
   document.body.appendChild(pop)
   positionPopover(pop, anchor)
   const input = pop.querySelector('.pr-editor-input')
   const err = pop.querySelector('.pr-editor-err')
   input.focus(); input.select()
-  const save = async (url) => {
-    if (url && typeof isPrUrl === 'function' && !isPrUrl(url)) {
-      err.textContent = 'Must be a GitHub PR URL (…/owner/repo/pull/123).'; err.hidden = false; return
-    }
-    const res = await window.api.setPrLink(notesPath, url)
+  const save = async (raw) => {
+    const parsed = raw.split('\n').map(l => l.trim()).filter(Boolean)
+    const bad = parsed.map(spec.invalid).find(Boolean)
+    if (bad) { err.textContent = bad; err.hidden = false; return }
+    const res = await spec.save(notesPath, parsed)
     if (!res || !res.ok) { err.textContent = (res && res.error) || 'Could not save.'; err.hidden = false; return }
     closePrEditor()
     if (window.refreshSessions) window.refreshSessions()
   }
-  pop.querySelector('.pr-editor-save').addEventListener('click', () => save(input.value.trim()))
+  pop.querySelector('.pr-editor-save').addEventListener('click', () => save(input.value))
   const rm = pop.querySelector('.pr-editor-remove')
   if (rm) rm.addEventListener('click', () => save(''))
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(input.value.trim()) } })
+  // Enter saves, Shift+Enter adds a line (the textarea's normal newline).
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(input.value) }
+  })
   setTimeout(() => {
     document.addEventListener('click', prEditorOutside, true)
     document.addEventListener('keydown', prEditorEsc, true)
@@ -899,7 +1073,7 @@ function renderDetailPanel(s, tab = 'running') {
   const showBadge = isHistorical || (!!s.status && s.status !== 'idle')
   const termOpen = window.getTerminalVisible && window.getTerminalVisible()
   const headerActions = termOpen
-    ? [infoPill(), ticketPill(s.ticket), prControl(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
+    ? [infoPill(), ticketControl(s), prControl(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
     : ''
   setHtml(headerEl, `
     <div class="detail-header-row">
@@ -940,7 +1114,7 @@ function renderDetailPanel(s, tab = 'running') {
   const restart = restartBtn(s)
   // Only show the destination toggle when there's at least one verb to apply it to.
   const launch = (resume || restart) ? [destinationToggle(), resume, restart].filter(Boolean).join('') : ''
-  const refs = [ticketPill(s.ticket), prControl(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
+  const refs = [ticketControl(s), prControl(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
   const actions = launch + (launch && refs ? '<span class="act-sep"></span>' : '') + refs
 
   setHtml(infoEl, `
@@ -1111,12 +1285,29 @@ function installDelegatedHandlers() {
       return
     }
 
+    // Several PRs / tickets on one session → pick which to open (or edit the list).
+    const linkMenuBtn = e.target.closest('[data-linkmenu]')
+    if (linkMenuBtn) {
+      e.stopPropagation()
+      if (document.getElementById('link-menu')) { closeLinkMenu(); return }   // re-click toggles closed
+      const s = (window._lastSessions || []).find(x => sessionKey(x) === linkMenuBtn.dataset.linkmenuKey)
+      const menu = linkMenuFor(s, linkMenuBtn.dataset.linkmenu)
+      if (menu && menu.items.length) openLinkMenu(linkMenuBtn, menu)
+      return
+    }
+
     const prEdit = e.target.closest('[data-pr-edit]')
     if (prEdit) {
       e.stopPropagation()
       if (document.getElementById('pr-editor')) { closePrEditor(); return }
-      const sel = (window._lastSessions || []).find(x => sessionKey(x) === window._lastSelectedKey)
-      openPrEditor(prEdit, prEdit.dataset.prEdit, (sel && sel.prLink) || '')
+      openLinkEditor(prEdit, 'pr', prEdit.dataset.prEdit)
+      return
+    }
+    const ticketEdit = e.target.closest('[data-ticket-edit]')
+    if (ticketEdit) {
+      e.stopPropagation()
+      if (document.getElementById('pr-editor')) { closePrEditor(); return }
+      openLinkEditor(ticketEdit, 'ticket', ticketEdit.dataset.ticketEdit)
       return
     }
 
