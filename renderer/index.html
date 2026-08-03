@@ -32,7 +32,6 @@
       <button class="new-session-btn" id="new-session-btn" title="Start a new session">＋ <span class="btn-label">New</span></button>
       <div class="view-toggle">
         <button class="view-btn active" data-view="list" title="List view">☰ <span class="btn-label">List</span></button>
-        <button class="view-btn" data-view="cards" title="Cards view">▦ <span class="btn-label">Cards</span></button>
         <button class="view-btn" data-view="board" title="Board view"><svg class="view-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/></svg> <span class="btn-label">Board</span></button>
       </div>
       <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -243,21 +242,20 @@
                   </div>
                   <div class="density-preview-col">
                     <div class="density-preview" aria-hidden="true">
-                      <div class="session-card idle">
-                        <div class="session-card-head">
+                      <div class="list-card idle">
+                        <div class="list-card-header">
                           <span class="status-dot idle"></span>
-                          <span class="session-card-name">refactor-auth-flow</span>
-                          <span class="session-card-cat" data-cat="FEAT">FEAT</span>
+                          <span class="list-card-name">refactor-auth-flow</span>
                         </div>
-                        <div class="session-card-activity">Implemented token refresh; tests green</div>
-                        <div class="session-card-next">↪ wire up the logout redirect</div>
-                        <div class="session-card-foot">
+                        <div class="list-card-preview">Implemented token refresh; tests green</div>
+                        <div class="list-card-next">↪ wire up the logout redirect</div>
+                        <div class="list-card-foot">
                           <div class="card-icons">
                             <span class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.414 2.414 0 0 0 3.414 0l6.586-6.586a2.414 2.414 0 0 0 0-3.414z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg></span>
                             <span class="act"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span>
                             <span class="act"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span>
                           </div>
-                          <span class="session-card-upd">↻ 14:32</span>
+                          <span class="age-pill">↻ 14:32</span>
                         </div>
                       </div>
                     </div>
@@ -441,21 +439,6 @@
     </div>
     <div class="resize-handle" id="resize-handle"></div>
 
-    <!-- ── Cards view: full-width grid ── -->
-    <div class="cards-view" id="cards-view">
-      <div class="cards-topbar">
-        <div class="panel-tabs">
-          <button class="tab-btn active" data-tab="running">Running</button>
-          <button class="tab-btn" data-tab="closed">Closed</button>
-          <button class="tab-btn" data-tab="archived">Archived</button>
-        </div>
-        <input class="search-field cards-search" id="cards-search" type="search" placeholder="Search sessions…" spellcheck="false">
-      </div>
-      <div class="cat-filter" id="cat-filter-cards"></div>
-      <div class="unmanaged-section" hidden></div>
-      <div class="cards-grid" id="cards-grid"></div>
-    </div>
-
     <!-- ── Board view: full-width kanban (global, all states) ── -->
     <div class="board-wrap" id="board-wrap">
       <div class="board-filterbar">
@@ -465,7 +448,7 @@
       <div class="board-view" id="board-view"></div>
     </div>
 
-    <!-- Detail panel: inline (list mode) or sliding drawer (cards mode) -->
+    <!-- Detail panel: inline (list mode) or sliding drawer (board mode) -->
     <div class="panel-detail" id="panel-detail">
       <div id="detail-header"></div>
       <div id="detail-info-pane"><div class="detail-empty">← Select a session</div></div>
@@ -494,7 +477,7 @@
     </div>
   </div>
 
-  <!-- Scrim behind the drawer (cards mode only) -->
+  <!-- Scrim behind the drawer (board mode only) -->
   <div class="scrim" id="scrim"></div>
 
   <script src="lib/tauri-api.js"></script>

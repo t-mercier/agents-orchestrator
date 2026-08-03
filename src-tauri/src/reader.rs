@@ -459,26 +459,43 @@ fn extract_section(content: &str, heading: &str) -> Option<String> {
     }
 }
 
-// (goal, next_steps, pr_link) read from a running session's notes.md. pr_link comes
-// from the frontmatter — the durable source — and the caller prefers it over the
-// (vestigial) transcript prLink.
-fn read_notes_meta(notes_path: &str) -> (Value, Value, Value, Value) {
+/// What a running session's notes.md contributes to its card. The link fields are
+/// LISTS (a task can span several PRs / tickets — see frontmatter_values); pr_links
+/// comes from the frontmatter, the durable source, which the caller prefers over the
+/// (vestigial) transcript prLink.
+#[derive(Default)]
+struct NotesMeta {
+    goal: Value,
+    next_steps: Value,
+    pr_links: Vec<String>,
+    tickets: Vec<String>,
+    last_summary: Value,
+}
+
+fn read_notes_meta(notes_path: &str) -> NotesMeta {
     match fs::read_to_string(notes_path) {
-        Ok(c) => {
-            let pr_link = parse_frontmatter(&c)
-                .get("pr_link")
-                .filter(|s| !s.is_empty())
-                .map(|s| Value::String(s.clone()))
-                .unwrap_or(Value::Null);
-            (
-                extract_section(&c, "Goal").map(Value::String).unwrap_or(Value::Null),
-                extract_section(&c, "Next steps").map(Value::String).unwrap_or(Value::Null),
-                pr_link,
-                last_history_summary(&c).map(Value::String).unwrap_or(Value::Null),
-            )
-        }
-        Err(_) => (Value::Null, Value::Null, Value::Null, Value::Null),
+        Ok(c) => NotesMeta {
+            goal: extract_section(&c, "Goal").map(Value::String).unwrap_or(Value::Null),
+            next_steps: extract_section(&c, "Next steps").map(Value::String).unwrap_or(Value::Null),
+            pr_links: frontmatter_values(&c, "pr_link", "pr_links"),
+            tickets: frontmatter_values(&c, "ticket", "tickets"),
+            last_summary: last_history_summary(&c).map(Value::String).unwrap_or(Value::Null),
+        },
+        Err(_) => NotesMeta::default(),
     }
+}
+
+/// Merge two ordered link lists, keeping the first list's order and dropping repeats.
+/// Used to fold the active-sessions.json registry ticket in front of the notes.md list.
+fn merge_links(primary: Vec<String>, extra: Vec<String>) -> Vec<String> {
+    let mut out = primary;
+    for v in extra {
+        let v = v.trim().to_string();
+        if !v.is_empty() && !out.iter().any(|x| x == &v) {
+            out.push(v);
+        }
+    }
+    out
 }
 
 /// (running sids, their notes_paths) — a CHEAP scan for the historical-tab exclusion:
@@ -543,18 +560,28 @@ fn root_for_notes_path(cfg: &Value, notes_path: &str) -> Value {
     best.map(|(_, r)| r).unwrap_or(Value::Null)
 }
 
-/// PR link for a session: explicit frontmatter wins; else (REVIEW only) the PR URL
-/// pasted into the transcript, disambiguated by the number in the session name.
-/// Shared by get_sessions (owned Transcript) and scan_historical (Option<Transcript>);
-/// callers pass the pr_urls slice (empty when there is no transcript).
-fn resolve_pr_link(explicit_fm: Value, category: &str, pr_urls: &[String], name: &str) -> Value {
-    if !explicit_fm.is_null() {
+/// PR links for a session: the explicit frontmatter list wins (a task can span several
+/// PRs); with none, a REVIEW session falls back to the PR URL pasted into the
+/// transcript, disambiguated by the number in the session name. That fallback stays
+/// SINGLE — one guessed link is a helpful default, a pile of every URL mentioned in the
+/// conversation is noise. Shared by get_sessions (owned Transcript) and scan_historical
+/// (Option<Transcript>); callers pass the pr_urls slice (empty when there's no transcript).
+fn resolve_pr_links(explicit_fm: Vec<String>, category: &str, pr_urls: &[String], name: &str) -> Vec<String> {
+    if !explicit_fm.is_empty() {
         explicit_fm
     } else if category == "REVIEW" {
-        pick_pr_url(pr_urls, name).map(Value::String).unwrap_or(Value::Null)
+        pick_pr_url(pr_urls, name).into_iter().collect()
     } else {
-        Value::Null
+        Vec::new()
     }
+}
+
+/// A link list as the renderer consumes it: `link` = the primary (first) value or null
+/// for the card label, `links` = the whole ordered list for the picker popover. Emitting
+/// both keeps every existing single-link consumer working untouched.
+fn link_fields(values: Vec<String>) -> (Value, Value) {
+    let first = values.first().cloned().map(Value::String).unwrap_or(Value::Null);
+    (first, Value::from(values))
 }
 
 #[tauri::command(async)]
@@ -595,10 +622,12 @@ pub fn get_sessions() -> Vec<Value> {
 
         let entry_meta = active.get(&sid).cloned().unwrap_or_else(|| json!({}));
         let notes_path = entry_meta.get("notes_path").and_then(Value::as_str).map(String::from);
-        let (goal, next_steps, pr_link_fm, last_summary) = match &notes_path {
+        let notes_meta = match &notes_path {
             Some(p) => read_notes_meta(p),
-            None => (Value::Null, Value::Null, Value::Null, Value::Null),
+            None => NotesMeta::default(),
         };
+        let NotesMeta { goal, next_steps, pr_links: pr_links_fm, tickets: tickets_fm, last_summary } =
+            notes_meta;
         let launch_cwd = data.get("cwd").and_then(Value::as_str).unwrap_or("");
         // The transcript records where the session actually works (it cd's into a
         // repo/worktree); the launch cwd is just where `claude` started. Use the
@@ -613,11 +642,23 @@ pub fn get_sessions() -> Vec<Value> {
             branch_git
         };
 
-        // PR link: explicit frontmatter wins; else (REVIEW only) the PR URL pasted
+        // PR links: explicit frontmatter wins; else (REVIEW only) the PR URL pasted
         // into the transcript, disambiguated by the number in the session name.
         let category = entry_meta.get("category").and_then(Value::as_str).unwrap_or("");
         let name_str = data.get("name").and_then(Value::as_str).unwrap_or("");
-        let pr_link = resolve_pr_link(pr_link_fm, category, &tr.pr_urls, name_str);
+        let (pr_link, pr_links) =
+            link_fields(resolve_pr_links(pr_links_fm, category, &tr.pr_urls, name_str));
+        // Tickets: the registry's ticket is the primary (it's what /start-session
+        // registered and what the session was renamed with), then any extras the
+        // notes.md declares — a task that grew a sub-task gets both.
+        let registry_ticket = entry_meta
+            .get("ticket")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from);
+        let (ticket, tickets) =
+            link_fields(merge_links(registry_ticket.into_iter().collect(), tickets_fm));
 
         let root = notes_path
             .as_deref()
@@ -655,7 +696,8 @@ pub fn get_sessions() -> Vec<Value> {
             "notesPath": notes_path,
             "root": root,
             "category": entry_meta.get("category").cloned().unwrap_or(Value::Null),
-            "ticket": entry_meta.get("ticket").cloned().unwrap_or(Value::Null),
+            "ticket": ticket,
+            "tickets": tickets,
             "goal": goal,
             "nextSteps": next_steps,
             "gitBranch": git_branch,
@@ -664,6 +706,7 @@ pub fn get_sessions() -> Vec<Value> {
             "lastActivityAt": tr.last_activity_at.map(Value::String).unwrap_or(Value::Null),
             "lastSummary": last_summary,
             "prLink": pr_link,
+            "prLinks": pr_links,
         }));
     }
 
@@ -786,13 +829,27 @@ fn recover_unregistered(cfg: &Value, want: &HashSet<String>) -> HashMap<String, 
     found
 }
 
+/// The raw text between the leading `---\n` and its closing `\n---`. None when the
+/// content has no complete frontmatter block. Shared by the scalar + list parsers.
+fn frontmatter_block(content: &str) -> Option<&str> {
+    let stripped = content.strip_prefix("---\n")?;
+    let end = stripped.find("\n---")?;
+    Some(&stripped[..end])
+}
+
 /// Parse the leading `---\n…\n---` YAML-ish frontmatter into key→value pairs
 /// (stripping surrounding quotes; empty values are dropped = treated as absent).
+/// Block-list item lines (`  - value`) are skipped — they belong to the list key
+/// above them (see frontmatter_values), and a URL item would otherwise split on its
+/// `https:` colon into a junk `- https` key.
 fn parse_frontmatter(content: &str) -> HashMap<String, String> {
     let mut out = HashMap::new();
     if let Some(stripped) = content.strip_prefix("---\n") {
         if let Some(end) = stripped.find("\n---") {
             for line in stripped[..end].lines() {
+                if is_frontmatter_list_item(line) {
+                    continue;
+                }
                 if let Some(idx) = line.find(':') {
                     let key = line[..idx].trim();
                     let val = line[idx + 1..]
@@ -804,6 +861,84 @@ fn parse_frontmatter(content: &str) -> HashMap<String, String> {
                     }
                 }
             }
+        }
+    }
+    out
+}
+
+/// A YAML block-list item line: `- value` at any indent. Used to skip these lines in
+/// the scalar parser, to collect them in frontmatter_values, and (from lib.rs) to drop
+/// the old block when rewriting a link list — one definition of "is this an item".
+pub(crate) fn is_frontmatter_list_item(line: &str) -> bool {
+    let t = line.trim_start();
+    t.strip_prefix('-').is_some_and(|r| r.starts_with(' ') || r.is_empty())
+}
+
+/// Strip a list item's `- ` prefix and surrounding quotes → the bare value.
+fn list_item_value(line: &str) -> &str {
+    line.trim_start()
+        .trim_start_matches('-')
+        .trim()
+        .trim_matches(|c| c == '"' || c == '\'')
+        .trim()
+}
+
+/// Every value a session declares for one link kind, in display order.
+///
+/// The frontmatter shape is ADDITIVE, so nothing that already writes these keys had
+/// to change: `singular` (`pr_link:` / `ticket:`) stays the PRIMARY value — the one
+/// the skills fill and the one shown as the card's label — and the optional
+/// `plural` key (`pr_links:` / `tickets:`) carries the EXTRAS:
+///
+/// ```yaml
+/// pr_link: https://github.com/o/r/pull/12    # primary, first in the list
+/// pr_links:                                  # extras, in order
+///   - https://github.com/o/r/pull/15
+/// ```
+///
+/// The plural key also accepts a flow list (`pr_links: [a, b]`) and a lone scalar,
+/// so a hand-edited notes.md reads fine either way. Result is deduped (a value
+/// repeated in both keys appears once) with order preserved.
+pub(crate) fn frontmatter_values(content: &str, singular: &str, plural: &str) -> Vec<String> {
+    let Some(fm) = frontmatter_block(content) else {
+        return Vec::new();
+    };
+    let mut out: Vec<String> = Vec::new();
+    let mut push = |v: &str| {
+        let v = v.trim();
+        if !v.is_empty() && !out.iter().any(|x| x == v) {
+            out.push(v.to_string());
+        }
+    };
+    // Primary first, so it stays the head of the list regardless of key order.
+    if let Some(v) = parse_frontmatter(content).get(singular) {
+        push(v);
+    }
+    let mut in_plural = false;
+    for line in fm.lines() {
+        if in_plural {
+            if is_frontmatter_list_item(line) {
+                push(list_item_value(line));
+                continue;
+            }
+            // A non-item line ends the block (blank lines are tolerated inside it).
+            if !line.trim().is_empty() {
+                in_plural = false;
+            }
+        }
+        let Some(idx) = line.find(':') else { continue };
+        if line[..idx].trim() != plural {
+            continue;
+        }
+        let rest = line[idx + 1..].trim();
+        if let Some(flow) = rest.strip_prefix('[').and_then(|r| r.strip_suffix(']')) {
+            for item in flow.split(',') {
+                push(item.trim().trim_matches(|c| c == '"' || c == '\''));
+            }
+        } else if rest.is_empty() {
+            in_plural = true; // block list — items follow on the next lines
+        } else {
+            push(rest.trim_matches(|c| c == '"' || c == '\''));
         }
     }
     out
@@ -1140,10 +1275,17 @@ fn scan_historical() -> Vec<Value> {
             // Resumable only if the transcript still exists (else --resume can't
             // find the conversation — the UI should offer Restart instead).
             let resumable = tr.as_ref().map(|t| t.found).unwrap_or(false);
-            // PR link: explicit frontmatter wins; else (REVIEW only) the PR URL pasted
+            // PR links: explicit frontmatter wins; else (REVIEW only) the PR URL pasted
             // into the transcript, disambiguated by the number in the session name.
             let pr_urls = tr.as_ref().map(|t| t.pr_urls.as_slice()).unwrap_or(&[]);
-            let pr_link = resolve_pr_link(fv(&fm, "pr_link"), &cat, pr_urls, name.as_str());
+            let (pr_link, pr_links) = link_fields(resolve_pr_links(
+                frontmatter_values(&content, "pr_link", "pr_links"),
+                &cat,
+                pr_urls,
+                name.as_str(),
+            ));
+            let (ticket, tickets) =
+                link_fields(frontmatter_values(&content, "ticket", "tickets"));
             // Last real activity from the transcript (e.g. Pause kills the pty without
             // touching notes.md, so its mtime can be a stale prior save/close — the
             // renderer takes the MORE RECENT of updatedAt vs lastActivityAt for the age
@@ -1160,10 +1302,12 @@ fn scan_historical() -> Vec<Value> {
                 "resumable": resumable,
                 "category": cat,
                 "root": root.clone(),
-                "ticket": fv(&fm, "ticket"),
+                "ticket": ticket,
+                "tickets": tickets,
                 "name": name,
                 "branch": fv(&fm, "branch"),
                 "prLink": pr_link,
+                "prLinks": pr_links,
                 "startedAt": fv(&fm, "started_at"),
                 "updatedAt": updated_at,
                 "lastActivityAt": last_activity_at,
@@ -1214,9 +1358,10 @@ fn bucket_by_status(all: Vec<Value>) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        bucket_by_status, date_to_days, discover_meta_lines, extract_pr_urls, lead_date,
-        is_resumable_sid, notes_records_session, parse_frontmatter, pick_pr_url,
-        reopened_after_close, root_for_notes_path, session_history_info, Transcript,
+        bucket_by_status, date_to_days, discover_meta_lines, extract_pr_urls, frontmatter_values,
+        lead_date, is_resumable_sid, merge_links, notes_records_session, parse_frontmatter,
+        pick_pr_url, reopened_after_close, resolve_pr_links, root_for_notes_path,
+        session_history_info, Transcript,
     };
     use crate::is_valid_session_id;
     use serde_json::json;
@@ -1269,6 +1414,64 @@ mod tests {
         assert!(!is_resumable_sid("to fill (open the parallel session, then /restart-session X)"));
         assert!(!is_resumable_sid(""));
         assert!(!is_resumable_sid("short"));
+    }
+
+    #[test]
+    fn frontmatter_values_reads_primary_then_extras() {
+        // The documented shape: primary scalar + a block list of extras.
+        let fm = "---\nname: x\npr_link: https://github.com/o/r/pull/12\npr_links:\n  - https://github.com/o/r/pull/15\n  - https://github.com/o/r/pull/18\nbranch: b\n---\nbody";
+        assert_eq!(
+            frontmatter_values(fm, "pr_link", "pr_links"),
+            vec![
+                "https://github.com/o/r/pull/12",
+                "https://github.com/o/r/pull/15",
+                "https://github.com/o/r/pull/18"
+            ]
+        );
+        // The block ends at the next key — `branch` must not be swallowed as an item.
+        assert_eq!(parse_frontmatter(fm).get("branch").map(String::as_str), Some("b"));
+        // A list item's URL colon must not register as a key (the junk `- https` case).
+        assert!(!parse_frontmatter(fm).contains_key("- https"));
+    }
+
+    #[test]
+    fn frontmatter_values_tolerates_hand_written_shapes() {
+        // Extras only, no primary → still a list (someone hand-edited the file).
+        let only_plural = "---\ntickets:\n  - FEAT-1\n  - FEAT-2\n---\nbody";
+        assert_eq!(frontmatter_values(only_plural, "ticket", "tickets"), vec!["FEAT-1", "FEAT-2"]);
+        // Flow list, quoted items, and a plural written as a lone scalar.
+        let flow = "---\ntickets: [FEAT-1, \"FEAT-2\"]\n---\nbody";
+        assert_eq!(frontmatter_values(flow, "ticket", "tickets"), vec!["FEAT-1", "FEAT-2"]);
+        let scalar_plural = "---\ntickets: FEAT-9\n---\nbody";
+        assert_eq!(frontmatter_values(scalar_plural, "ticket", "tickets"), vec!["FEAT-9"]);
+        // A value repeated across both keys appears once, primary order kept.
+        let dup = "---\nticket: FEAT-1\ntickets:\n  - FEAT-1\n  - FEAT-2\n---\nbody";
+        assert_eq!(frontmatter_values(dup, "ticket", "tickets"), vec!["FEAT-1", "FEAT-2"]);
+        // Legacy single-key notes.md (every session written before this feature).
+        let legacy = "---\nticket: FEAT-7\n---\nbody";
+        assert_eq!(frontmatter_values(legacy, "ticket", "tickets"), vec!["FEAT-7"]);
+        // Nothing declared, and no frontmatter at all → empty, never a panic.
+        assert!(frontmatter_values("---\nname: x\n---\nbody", "ticket", "tickets").is_empty());
+        assert!(frontmatter_values("# plain\n", "ticket", "tickets").is_empty());
+    }
+
+    #[test]
+    fn resolve_pr_links_prefers_frontmatter_then_review_transcript() {
+        let fm = vec!["https://github.com/o/r/pull/1".to_string()];
+        let urls = vec!["https://github.com/o/r/pull/9".to_string()];
+        // Frontmatter wins outright, whatever the category.
+        assert_eq!(resolve_pr_links(fm.clone(), "FEAT", &urls, "x"), fm);
+        // No frontmatter: REVIEW guesses ONE link from the transcript, others get none.
+        assert_eq!(resolve_pr_links(vec![], "REVIEW", &urls, "x"), urls);
+        assert!(resolve_pr_links(vec![], "FEAT", &urls, "x").is_empty());
+    }
+
+    #[test]
+    fn merge_links_keeps_primary_order_and_drops_repeats() {
+        let out = merge_links(vec!["FEAT-1".into()], vec!["FEAT-2".into(), "FEAT-1".into()]);
+        assert_eq!(out, vec!["FEAT-1", "FEAT-2"]);
+        // Blank extras are dropped, not emitted as empty entries.
+        assert_eq!(merge_links(vec![], vec!["  ".into(), "FEAT-3".into()]), vec!["FEAT-3"]);
     }
 
     #[test]

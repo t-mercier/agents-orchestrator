@@ -30,7 +30,8 @@ A few notes so the project stays coherent:
 
 - **Stack:** [Tauri v2](https://tauri.app) (Rust backend + system WebView) with a **vanilla-JS** renderer — no framework. Pure logic lives in `renderer/lib/*` (UMD modules, unit-tested); DOM templates + event delegation live in `ui.js`.
 - **Run it:** `cargo tauri dev`. **Tests:** `npm test` (Jest, renderer logic) and `cargo test` (in `src-tauri/`, Rust).
-- **Read-only by design.** The app never writes to `~/.claude` except two explicit, sandboxed actions (archive, PR link). The Rust command surface is small and every input is allowlist-validated (absolute paths, safe branches, `github.com/owner/repo/pull/N`), commands are spawned argv-only (no shell strings), and the core is **zero-network**.
+- **Read-only by design.** The app never writes to `~/.claude` except a few explicit, sandboxed actions (archive, PR links, tickets). The Rust command surface is small and every input is allowlist-validated (absolute paths, safe branches, `github.com/owner/repo/pull/N`), commands are spawned argv-only (no shell strings), and the core is **zero-network**.
+- **Screenshots are generated.** `docs/media/*.png` comes from [`scripts/screenshots/capture.sh`](scripts/screenshots/capture.sh) — it drives the real renderer with a synthetic dataset, so no real session ends up in the docs. Re-run it after a UI change that alters what the docs show.
 - **Architecture decisions** live in [`docs/adr`](docs/adr). Anything that adds a Tauri command, touches the PTY layer, or introduces a network call would need an ADR + a security rationale.
 
 These keep the bar clear in case the project opens to code contributions down the line.

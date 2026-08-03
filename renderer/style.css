@@ -526,10 +526,20 @@ body.kb-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 .act.pr-add { opacity: 0.4; }
 .act.pr-add:hover { opacity: 0.85; }
 
-/* Inline PR-link editor (REVIEW sessions). */
+/* Link picker (a session with several PRs / tickets) — board-menu geometry, with the
+   item labels (`owner/repo#123`) allowed to run a little wider. */
+.link-menu { min-width: 220px; }
+.link-menu .board-menu-name { font-weight: 500; }
+.link-menu-edit { color: var(--text-secondary); font-weight: 500; }
+.link-menu-edit:hover { color: var(--accent); }
+.board-menu-item[disabled] { opacity: 0.45; cursor: default; }
+
+/* Inline PR / ticket editor — one entry per line. */
 .pr-editor { position: fixed; z-index: 1000; width: 360px; max-width: calc(100vw - 16px); overflow-y: auto; background: var(--surface-modal); border: 0.5px solid rgba(var(--tint), 0.14); border-radius: 10px; box-shadow: 0 16px 44px rgba(0,0,0,0.45); padding: 12px; }
 .pr-editor-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); padding-bottom: 8px; }
+.pr-editor-hint { font-size: 11px; color: var(--text-tertiary); margin-bottom: 7px; line-height: 1.4; }
 .pr-editor-input { width: 100%; box-sizing: border-box; font-family: var(--font); font-size: 12px; color: var(--text-primary); background: rgba(var(--tint), 0.1); border: 0.5px solid var(--accent); border-radius: 6px; padding: 6px 8px; outline: none; }
+textarea.pr-editor-input { resize: vertical; min-height: 56px; line-height: 1.5; }
 .pr-editor-err { font-size: 11px; color: var(--danger); margin-top: 6px; }
 .pr-editor-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 .pr-editor-btn { font-family: var(--font); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 0.5px solid rgba(var(--tint), 0.18); background: rgba(var(--tint), 0.06); color: var(--text-primary); cursor: pointer; }
@@ -538,11 +548,10 @@ body.kb-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 .pr-editor-remove:hover { color: var(--danger); }
 
 /* ===== View Modes ===== */
-/* Board mode: hide the tabbed list/cards UI; show the full-width board. */
+/* Board mode: hide the tabbed list UI; show the full-width board. */
 .board-wrap { display: none; }
 body.mode-board .panel-left,
-body.mode-board .resize-handle,
-body.mode-board .cards-view { display: none !important; }
+body.mode-board .resize-handle { display: none !important; }
 /* Board wrap stacks the category-filter bar above the scrolling board. */
 body.mode-board .board-wrap { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 /* The detail drawer + scrim are reused as a slide-over ON the board (open on card click). */
@@ -585,94 +594,14 @@ html.has-usage .layout {
   height: calc(100vh - var(--titlebar-h) - 26px);
 }
 
-/* ── View-mode visibility ── */
-.cards-view { display: none; }
-body.mode-list .cards-view { display: none; }
-body.mode-cards .panel-left,
-body.mode-cards .resize-handle { display: none; }
-body.mode-cards .cards-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-
-/* ===== Cards Grid ===== */
-/* Cards grid */
-.cards-topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
-  border-bottom: 0.5px solid var(--card-border);
-  flex-shrink: 0;
-}
-.cards-topbar .panel-tabs { padding: 0; border: none; flex: 1; }
-.cards-search { max-width: 260px; }
 /* Board search: a row above the category-filter bar (which carries the divider). */
 /* Board filter bar: category chips (left, can wrap) + search (right) on one row. */
 .board-filterbar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 0.5px solid var(--card-border); flex-shrink: 0; }
 .board-filterbar .cat-filter-board { flex: 1; min-width: 0; border: none; padding: 0; }
 .board-search { max-width: 280px; flex: 0 0 auto; }
 
-/* Cards view: the scroll container. The actual grid is .cards-grid-inner, so it can
-   sit either directly in here (single space) or inside each space section (multi). */
-.cards-grid {
-  flex: 1;
-  overflow-y: auto;
-  padding: 18px;
-}
-.cards-grid-inner {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-  align-content: start;
-}
-/* Tighten the space sections when they wrap a cards grid. */
-.cards-grid .space-group { margin-bottom: 10px; }
-.cards-grid .space-sessions .cards-grid-inner { padding-top: 8px; }
-
-.session-card {
-  height: 150px;                 /* uniform card size */
-  display: flex;
-  flex-direction: column;
-  background: var(--card-bg);
-  border: 0.5px solid var(--card-border);
-  border-radius: 12px;
-  padding: 14px;
-  cursor: pointer;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  /* no transform on hover — a geometry shift makes the cursor flicker and the
-     card hard to click; use border + shadow only */
-  transition: border-color 0.12s, box-shadow 0.12s;
-}
-.session-card:hover {
-  border-color: rgba(var(--tint), 0.16);
-  box-shadow: var(--shadow-md);
-}
-.session-card.selected { border-color: var(--accent); }
-.session-card.waiting { border-color: rgba(var(--status-waiting-rgb),0.35); }
-/* Lifecycle parity with the list cards. Stale recedes; closed/archived greyed-white. */
-.session-card.stale { opacity: 0.82; }
-.session-card.stale .session-card-name { color: var(--text-tertiary); font-weight: 500; }
-.session-card.stale:hover, .session-card.stale.selected { opacity: 1; }
-.session-card.stale:hover .session-card-name, .session-card.stale.selected .session-card-name { color: var(--text-primary); }
-.session-card.historical .session-card-name { color: rgba(var(--tint), 0.72); font-weight: 500; }
-.session-card.historical:hover .session-card-name,
-.session-card.historical.selected .session-card-name { color: var(--text-primary); }
-
-/* ===== Card Interior ===== */
-.session-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-shrink: 0; }
-.session-card-name { font-size: 13px; font-weight: 600; flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.session-card-cat { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; flex-shrink: 0; }
-.session-card-activity {
-  flex: 1;                       /* fills the middle, pushes foot to the bottom */
-  font-size: 12px; color: var(--text-secondary); line-height: 1.45;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-  overflow: hidden; margin-bottom: 10px;
-}
-.session-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-shrink: 0; }
-.session-card-foot .pills { flex: 1; overflow: hidden; }
-.session-card-upd { font-size: 10px; color: var(--text-tertiary); white-space: nowrap; flex-shrink: 0; }
-
 /* ===== Drawer & Scrim ===== */
-/* Scrim + drawer (cards mode) */
+/* Scrim + drawer (board mode) */
 .scrim {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.5);
@@ -681,9 +610,9 @@ body.mode-cards .cards-view { display: flex; flex-direction: column; flex: 1; ov
   transition: opacity 0.2s;
   z-index: 50;
 }
-body.mode-cards .scrim.open, body.mode-board .scrim.open { opacity: 1; pointer-events: auto; }
+body.mode-board .scrim.open { opacity: 1; pointer-events: auto; }
 
-body.mode-cards .panel-detail, body.mode-board .panel-detail {
+body.mode-board .panel-detail {
   position: fixed; top: 0; right: 0; height: 100%;
   width: 52vw; min-width: 460px; max-width: 760px;
   background: var(--surface-modal);
@@ -699,7 +628,7 @@ body.mode-cards .panel-detail, body.mode-board .panel-detail {
   transition: opacity 0.16s ease;
   z-index: 51;
 }
-body.mode-cards .panel-detail.open, body.mode-board .panel-detail.open { opacity: 1; pointer-events: auto; }
+body.mode-board .panel-detail.open { opacity: 1; pointer-events: auto; }
 
 /* Drawer controls (detach / close) — only in cards mode */
 .drawer-ctl {
@@ -714,7 +643,7 @@ body.mode-cards .panel-detail.open, body.mode-board .panel-detail.open { opacity
 }
 .drawer-ctl.drawer-detach { font-size: 18px; }
 .drawer-ctl:hover { color: var(--text-primary); }
-body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex; }
+body.mode-board .drawer-ctl { display: inline-flex; }
 
 /* Detached single-session window */
 .detached-detail {
@@ -739,8 +668,7 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
 
 /* ===== Category Colors & Left Panel ===== */
 /* Per-category colors are injected at runtime from the shared config
-   (see applyCategoryColors in ui.js → <style id="cat-colors">). Neutral default: */
-.session-card-cat { color: var(--text-tertiary); }
+   (see applyCategoryColors in ui.js → <style id="cat-colors">). */
 
 /* ── Left panel: tabs + list ── */
 .panel-left {
@@ -989,7 +917,10 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
   border-radius: 4px;
 }
 .space-sessions { overflow: hidden; }
-.space-pinned { padding-bottom: 2px; }
+/* Pinned block — floats at the top of the whole column (above every space section),
+   with no header: the filled bookmark on each card is the marker. A little breathing
+   room below separates it from the first section. */
+.list-pinned { padding-bottom: 6px; }
 .space-sessions.collapsed { display: none; }
 /* Indent the category groups nested inside a space so the hierarchy reads. */
 .space-sessions .category-header { padding-left: 24px; }
@@ -1081,7 +1012,6 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
 .age-pill { align-self: flex-end; padding-bottom: 5px; }
 /* Centered on the action row's height (inherits align-items: center from the row). */
 .list-card-foot .age-pill { margin-left: auto; }
-.session-card-foot .age-pill { margin-left: 8px; }
 .list-card-preview {
   font-size: 11px;
   color: var(--text-secondary);
@@ -1091,7 +1021,7 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
   padding-left: 14px;
 }
 /* Re-entry cue: the next planned step ("where was I"). Accent-tinted, 1 line. */
-.list-card-next, .session-card-next {
+.list-card-next {
   font-size: 11px;
   color: var(--accent);
   opacity: 0.85;
@@ -1100,7 +1030,6 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
   text-overflow: ellipsis;
 }
 .list-card-next { padding-left: 14px; margin-top: 2px; }
-.session-card-next { margin-top: 4px; margin-bottom: 10px; }   /* keep the foot icons off the cue */
 
 /* ===== Card Icons & Actions ===== */
 /* ── Card icon row (Jira ticket / PR / notes) — list + session cards ──
@@ -1108,7 +1037,6 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
    push the update time to the right. */
 .card-icons { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .list-card .card-icons { margin-top: 8px; padding-left: 12px; }
-.session-card-foot .card-icons { flex: 1; overflow: hidden; }
 .card-icons .act { width: 26px; height: 24px; border-radius: 7px; }
 .card-icons .act svg, .card-icons .act img { width: 14px; height: 14px; }
 /* Ticket number label (list + card views) — sized to match the row's icon buttons
@@ -1118,25 +1046,34 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
 button.ticket-tag { cursor: pointer; }
 button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rgb), 0.14); }
 
+/* ── Several PRs / tickets on one session ──
+   The icon keeps its single-link size and gains a count badge; clicking opens the
+   picker popover instead of a link. The badge is ringed in the surface colour so it
+   reads as riding on top of the icon, not glued to its edge. */
+.act.multi { position: relative; overflow: visible; }
+.act .multi-count {
+  position: absolute; top: -3px; right: -3px;
+  min-width: 13px; height: 13px; padding: 0 3px;
+  font-size: 8.5px; font-weight: 700; line-height: 13px; text-align: center;
+  color: var(--on-accent, #fff); background: var(--accent);
+  border-radius: 7px; box-shadow: 0 0 0 1.5px var(--bg);
+}
+/* On a ticket chip the count rides inline as "FEAT-1842 +1" — there's a text label to
+   hang it off, so no floating badge. */
+.ticket-tag .multi-suffix { margin-left: 4px; color: var(--accent); font-weight: 700; }
+.kb-chip-ticket .multi-suffix { margin-left: 3px; color: var(--accent); font-weight: 700; }
+
 /* ===== Card Density ===== */
 /* ── Card density (html[data-density]) — default/unset = detailed (full base CSS).
-   Compact drops the prose (activity preview, next cue, update time) but keeps the
-   icon row; minimal is just the identity line (dot + name + stale/wait badge). The
+   Compact drops the prose (summary preview + next cue) but keeps the icon row;
+   minimal drops the icon row too, leaving the identity line (dot + name + age). The
    stale/wait badge and status dot live in the header, so they're never hidden. ── */
 [data-density="compact"] .list-card-preview,
-[data-density="compact"] .list-card-next,
-[data-density="compact"] .session-card-activity,
-[data-density="compact"] .session-card-next { display: none; }
-[data-density="compact"] .session-card { height: auto; }
+[data-density="compact"] .list-card-next { display: none; }
 
 [data-density="minimal"] .list-card-preview,
 [data-density="minimal"] .list-card-next,
-[data-density="minimal"] .card-icons,
-[data-density="minimal"] .session-card-activity,
-[data-density="minimal"] .session-card-next,
-[data-density="minimal"] .session-card-foot { display: none; }
-[data-density="minimal"] .session-card { height: auto; }
-[data-density="minimal"] .session-card-head { margin-bottom: 0; }
+[data-density="minimal"] .card-icons { display: none; }
 
 /* Settings → Appearance density preview: an inert sample card that inherits the
    global data-density so it morphs as you click a mode. No outer chrome — just the
@@ -1174,7 +1111,7 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 .density-preview-col { display: flex; flex-direction: column; gap: 8px; }
 .ui-preview-label { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); }
 .density-preview { pointer-events: none; }   /* no frame/background — just the sample card */
-.density-preview .session-card { width: 100%; max-width: 280px; cursor: default; }
+.density-preview .list-card { width: 100%; max-width: 280px; cursor: default; }
 .density-preview .act img { opacity: 0.85; }
 
 /* Look cards (Settings → Appearance). Each = accent dot over its surface-tint wash;
@@ -1233,8 +1170,7 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
   transition: opacity 0.1s, color 0.1s;
 }
 .pin-btn svg { width: 14px; height: 14px; display: block; }
-.list-card:hover .pin-btn,
-.session-card:hover .pin-btn { opacity: 0.55; }
+.list-card:hover .pin-btn { opacity: 0.55; }
 .pin-btn:hover { opacity: 1 !important; color: var(--text-primary); }
 /* Pinned: accent-coloured + filled (reads as "stuck"), always visible. */
 .pin-btn.pinned { opacity: 1 !important; color: var(--accent); }
@@ -1257,11 +1193,8 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 }
 .archive-btn svg, .close-btn svg, .pause-btn svg { width: 15px; height: 15px; display: block; }
 .list-card:hover .archive-btn,
-.session-card:hover .archive-btn,
 .list-card:hover .close-btn,
-.session-card:hover .close-btn,
-.list-card:hover .pause-btn,
-.session-card:hover .pause-btn { opacity: 0.5; }
+.list-card:hover .pause-btn { opacity: 0.5; }
 .archive-btn:hover { opacity: 1 !important; color: var(--text-primary); }
 .pause-btn:hover { opacity: 1 !important; color: var(--text-primary); }
 .close-btn:hover { opacity: 1 !important; color: var(--status-busy, var(--accent)); }
@@ -1272,8 +1205,7 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
   flex-shrink: 0; -webkit-app-region: no-drag; transition: opacity 0.1s, color 0.1s;
 }
 .delete-btn svg { width: 15px; height: 15px; display: block; }
-.list-card:hover .delete-btn,
-.session-card:hover .delete-btn { opacity: 0.5; }
+.list-card:hover .delete-btn { opacity: 0.5; }
 .delete-btn:hover { opacity: 1 !important; color: #ff6b6b; }
 .category-name[data-cat="PINNED"] { color: var(--text-secondary); }
 

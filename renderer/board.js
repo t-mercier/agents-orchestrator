@@ -60,17 +60,21 @@
     const badges =
       (urgent ? '<span class="kb-badge urgent">⚡ urgent</span>' : '') +
       (waiting ? '<span class="kb-badge waiting">WAIT</span>' : (stale ? '<span class="kb-badge stale">idle</span>' : ''))
-    // Ticket / PR as clickable service icons (open via the global .pill / data-url handler).
+    // Ticket / PR as clickable service icons (open via the global .pill / data-url
+    // handler; several PRs → a count badge + the picker popover, see ui.js prPill).
     const icons = [
-      (window.prPill ? window.prPill(s.prLink) : ''),
+      (window.prPill ? window.prPill(s) : ''),
     ].filter(Boolean).join('')
     // The board is the at-a-glance view, so show the ticket as a number chip (not a
     // bare icon). Clickable when a tracker URL is configured; a plain label otherwise.
+    // Extra tickets ride a `+N` suffix, same as the list card.
     const tbase = (window.CSM_CONFIG && window.CSM_CONFIG.ticketBaseUrl) || ''
-    const ticketChip = (s.ticket && /[a-z0-9]/i.test(s.ticket))
+    const tickets = window.ticketsOf ? window.ticketsOf(s) : (s.ticket ? [s.ticket] : [])
+    const tExtra = tickets.length > 1 ? `<span class="multi-suffix">+${tickets.length - 1}</span>` : ''
+    const ticketChip = tickets.length
       ? (tbase
-          ? `<button class="kb-chip kb-chip-ticket ticket-chip" data-url="${escapeHtml(tbase + s.ticket)}" data-tip="${escapeHtml(s.ticket)} · open ticket">${escapeHtml(s.ticket)}</button>`
-          : `<span class="kb-chip kb-chip-ticket" title="${escapeHtml(s.ticket)}">${escapeHtml(s.ticket)}</span>`)
+          ? `<button class="kb-chip kb-chip-ticket ticket-chip" data-url="${escapeHtml(tbase + tickets[0])}" data-tip="${escapeHtml(tickets.join(' · '))}">${escapeHtml(tickets[0])}${tExtra}</button>`
+          : `<span class="kb-chip kb-chip-ticket" title="${escapeHtml(tickets.join(' · '))}">${escapeHtml(tickets[0])}${tExtra}</span>`)
       : ''
     // No per-card space chip on the board — the shared ⚲ Filter popover (Spaces
     // section) scopes it instead.
