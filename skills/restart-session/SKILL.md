@@ -113,6 +113,35 @@ for f in sorted(glob.glob(os.path.expanduser('~/.claude/sessions/*.json')), key=
 ")
 ```
 
+### Step 3.5 — Collision guard (NEVER hijack an active session)
+
+`SESSION_ID` is **this terminal's** session, and Step 4 points it at `$NOTES_PATH`. If this
+terminal is ALREADY the active session for *different* work, registering would silently
+re-point the id and **detach that session** from the active list — its `notes.md` survives on
+disk, but it vanishes from the dashboard and from `/list-sessions`. Same guard as
+`/start-session` Step 4.5: a session you want to reopen deserves its own terminal rather than
+cannibalizing the one you are in.
+
+```bash
+EXISTING=$(python3 - "$SESSION_ID" "$NOTES_PATH" <<'PY'
+import json, os, sys
+sid, target = sys.argv[1], sys.argv[2]
+p = os.path.expanduser('~/.claude/active-sessions.json')
+try: d = json.load(open(p))
+except Exception: d = {}
+cur = (d.get(sid) or {}).get('notes_path', '')
+# Collision only if this terminal is already bound to a DIFFERENT, still-existing workspace.
+if cur and os.path.abspath(cur) != os.path.abspath(target) and os.path.exists(cur):
+    print(cur)
+PY
+)
+```
+
+- **`$EXISTING` empty** → fresh terminal (or the id already points at this same workspace): proceed normally through Steps 4–7.
+- **`$EXISTING` non-empty** → this terminal is the live session for `$EXISTING`. Do NOT silently proceed. Use `AskUserQuestion`:
+  - **Reopen it in a fresh terminal (default, recommended)** — **stop here and write nothing**: skip Steps 4, 4.5, 5 and 6 entirely (no `active-sessions.json` write, no un-archive, no branch checkout, no rename). Tell the user to open a new terminal (dashboard **+New**, or `claude` in a shell) and run `/restart-session <FOLDER>` there. Both sessions stay intact and recoverable.
+  - **Re-bind this terminal (only if the current work is truly done)** — proceed normally through Steps 4–7; the session this terminal currently holds detaches (its `notes.md` stays on disk, reopen it later with `/restart-session`).
+
 ### Step 4 — Register in active-sessions.json
 
 Point this NEW `$SESSION_ID` at the existing `$NOTES_PATH` (substitute frontmatter values):

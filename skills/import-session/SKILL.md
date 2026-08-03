@@ -81,6 +81,35 @@ NOTES_PATH="$TARGET_DIR/notes.md"
 
 If `notes.md` already exists at `$NOTES_PATH`, abort: "Already managed at `$NOTES_PATH` — use `/restart-session $FOLDER` to reopen." Do NOT overwrite.
 
+## Step 3.5 — Collision guard (NEVER hijack an active session)
+
+Step 6 binds **this terminal's** `SESSION_ID` to `$NOTES_PATH`. Step 3 only checked the
+TARGET folder; this checks the other direction — whether this terminal is already the active
+session for *different* work. If it is, registering would silently re-point the id and
+**detach that session** from the active list (its `notes.md` survives on disk, but it
+disappears from the dashboard and from `/list-sessions`). Same guard as `/start-session`
+Step 4.5.
+
+```bash
+EXISTING=$(python3 - "$SESSION_ID" "$NOTES_PATH" <<'PY'
+import json, os, sys
+sid, target = sys.argv[1], sys.argv[2]
+p = os.path.expanduser('~/.claude/active-sessions.json')
+try: d = json.load(open(p))
+except Exception: d = {}
+cur = (d.get(sid) or {}).get('notes_path', '')
+# Collision only if this terminal is already bound to a DIFFERENT, still-existing workspace.
+if cur and os.path.abspath(cur) != os.path.abspath(target) and os.path.exists(cur):
+    print(cur)
+PY
+)
+```
+
+- **`$EXISTING` empty** → unmanaged terminal, which is what `/import-session` is for: proceed normally through Steps 4–7.
+- **`$EXISTING` non-empty** → there is nothing to adopt: this terminal is ALREADY managed as `$EXISTING`. Do NOT silently proceed. Use `AskUserQuestion`:
+  - **Keep the existing binding (default, recommended)** — **stop here and write nothing**: skip Steps 4–7 (no notes.md, no `active-sessions.json` write). Print that this terminal is already managed as `$EXISTING`; to reopen a *different* workspace here, `/restart-session <slug>` is the right command.
+  - **Re-bind this terminal to the new workspace (only if the current work is truly done)** — proceed normally through Steps 4–7; the old binding detaches (its `notes.md` stays on disk, reopen it later with `/restart-session`).
+
 ## Step 4 — Resolve branch
 
 ```bash
