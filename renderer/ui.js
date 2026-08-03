@@ -352,23 +352,17 @@ function renderCategoryGroup(category, sessions, selectedKey, changedKeys) {
   `
 }
 
-// A space section: an expandable header wrapping that space's PINNED group (its own
-// pinned sessions, at the category level) + category groups. No per-card space labels —
-// the section header is the only space marker. Sessions with no space fall under "—".
+// A space section: an expandable header wrapping that space's category groups. No
+// per-card space labels — the section header is the only space marker. Sessions with no
+// space fall under "—". Pinned sessions are NOT in here: they float above every space
+// (see renderPanelList), so the pinned block is one list at the top of the column
+// rather than one per space.
 function renderSpaceSection(space, sessions, selectedKey, changedKeys) {
   const collapsed = collapsedSpaces.has(space)
   const active = hasBusy(sessions)
-  const pinned = sessions.filter(isPinnedSession).sort((a, b) => rankOf(a) - rankOf(b))
-  const rest = sessions.filter(s => !isPinnedSession(s))
-  // Pinned cards float to the very top of the space — no "PINNED" header, just the
-  // cards (the bookmark fill marks them as pinned).
-  const pinnedCards = pinned.length
-    ? `<div class="space-pinned">${pinned.map(s => renderListCard(s, selectedKey, changedKeys.has(sessionKey(s)))).join('')}</div>`
-    : ''
-  const inner = pinnedCards
-    + groupByCategory(rest)
-      .map(([cat, sess]) => renderCategoryGroup(cat, sess, selectedKey, changedKeys))
-      .join('')
+  const inner = groupByCategory(sessions)
+    .map(([cat, sess]) => renderCategoryGroup(cat, sess, selectedKey, changedKeys))
+    .join('')
   return `
     <div class="space-group">
       <div class="space-header ${active ? 'has-active' : ''}" data-space="${escapeHtml(space)}">
@@ -450,31 +444,34 @@ function updateTabBadges() {
 function renderPanelList(sessions, selectedKey, changedKeys) {
   if (!sessions.length) { setHtml(document.getElementById('panel-list'), emptyListMessage()); return }
 
-  // "⚡ Needs you" (waiting sessions) always floats to the very top, cross-space —
-  // blocked work must never be buried. Everything else groups by space (when >1),
-  // and PINNED lives INSIDE each space (handled by renderSpaceSection), so there's no
-  // floated PINNED and no per-card space label.
+  // Two blocks float above everything, cross-space, in this order:
+  //   1. "⚡ Needs you" (waiting sessions) — blocked work must never be buried, so it
+  //      outranks even a pin. A waiting session that's also pinned appears HERE only,
+  //      never twice.
+  //   2. PINNED — at the top of the whole column, not per space and not per category:
+  //      pins are the "these are my current threads" shortlist, and scattering them
+  //      under their own section defeated that. No header and no category/space label
+  //      on the cards — the filled bookmark is the marker.
   const multi = window.multiSpace && window.multiSpace()
   const waiting = sessions.filter(s => s.status === 'waiting')
-  const therest = sessions.filter(s => s.status !== 'waiting')
+  const notWaiting = sessions.filter(s => s.status !== 'waiting')
+  const pinned = notWaiting.filter(isPinnedSession).sort((a, b) => rankOf(a) - rankOf(b))
+  const therest = notWaiting.filter(s => !isPinnedSession(s))
   let html = ''
   if (waiting.length) {
     waiting.sort((a, b) => rankOf(a) - rankOf(b))
     html += renderCategoryGroup('⚡ Needs you', waiting, selectedKey, changedKeys)
+  }
+  if (pinned.length) {
+    html += `<div class="list-pinned">${pinned.map(s => renderListCard(s, selectedKey, changedKeys.has(sessionKey(s)))).join('')}</div>`
   }
   if (multi) {
     html += groupBySpace(therest).map(([space, sess]) =>
       renderSpaceSection(space, sess, selectedKey, changedKeys)
     ).join('')
   } else {
-    // Single space → no sections: pinned cards float at the top (no header), then
-    // category groups.
-    const pinned = therest.filter(isPinnedSession).sort((a, b) => rankOf(a) - rankOf(b))
-    const rest = therest.filter(s => !isPinnedSession(s))
-    if (pinned.length) {
-      html += `<div class="space-pinned">${pinned.map(s => renderListCard(s, selectedKey, changedKeys.has(sessionKey(s)))).join('')}</div>`
-    }
-    const grouped = groupByCategory(rest)
+    // Single space → no sections, just the category groups (pins already floated).
+    const grouped = groupByCategory(therest)
     if (listReorgActive()) {
       // Running (no search): draggable category blocks in a top-level drop container,
       // with the movable unmanaged block interleaved at its stored index.

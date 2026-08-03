@@ -999,7 +999,10 @@ body.mode-cards .drawer-ctl, body.mode-board .drawer-ctl { display: inline-flex;
   border-radius: 4px;
 }
 .space-sessions { overflow: hidden; }
-.space-pinned { padding-bottom: 2px; }
+/* Pinned block — floats at the top of the whole column (above every space section),
+   with no header: the filled bookmark on each card is the marker. A little breathing
+   room below separates it from the first section. */
+.list-pinned { padding-bottom: 6px; }
 .space-sessions.collapsed { display: none; }
 /* Indent the category groups nested inside a space so the hierarchy reads. */
 .space-sessions .category-header { padding-left: 24px; }

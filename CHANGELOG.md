@@ -13,6 +13,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 ### Added
 - **Several PRs / tickets per session** — a task that spans two PRs (or an epic plus its sub-task) no longer has to pick one. The `notes.md` frontmatter gained optional `pr_links:` / `tickets:` lists next to the existing `pr_link:` / `ticket:` primaries (additive — nothing that already writes those keys changed). With more than one link the card's GitHub icon / ticket chip show a **count badge** (`+1`) and open a **picker popover** listing `owner/repo#123`; a single link still opens straight away as before. The inline editor is now **one entry per line** and is no longer REVIEW-only — any session with a `notes.md` can attach PRs or tickets, tickets included (new `set_tickets` write, same ADR-013 guards as `set_pr_links`: atomic, confined under a configured root, validated). `/save-session` and `/close-session` now **append** discovered PRs/tickets to those lists instead of only filling an empty field.
 
+### Changed
+- **List view: pinned sessions float to the top of the whole column** — previously they floated per *space* (and, before that, per category), which defeated the point of a pin as your "current threads" shortlist. They now sit in one block at the top, cross-space, just below **⚡ Needs you** (blocked work still outranks a pin; a session that's both appears only under Needs you). No header and no category/space label on the cards — the filled bookmark stays the only marker.
+
 ## [0.3.1-alpha] - 2026-07-23
 
 ### Added
