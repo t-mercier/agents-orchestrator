@@ -385,10 +385,15 @@ fn managed_session_ids() -> HashSet<String> {
     ids
 }
 
+/// One candidate transcript for `discover_sessions`: (mtime, sessionId, title, cwd, skip).
+/// Named because the tuple repeats three times and clippy's type_complexity (an error
+/// under CI's `-D warnings`) rightly objects to spelling it out.
+type UnmanagedRow = (u64, String, Option<String>, Option<String>, bool);
+
 /// Pure core of `discover_sessions`: drop managed and skip=true rows, sort newest-first
-/// by mtime, cap to the 30 newest. Rows are (mtime, sessionId, title, cwd, skip).
+/// by mtime, cap to the 30 newest.
 fn select_unmanaged(
-    rows: Vec<(u64, String, Option<String>, Option<String>, bool)>,
+    rows: Vec<UnmanagedRow>,
     managed: &std::collections::HashSet<String>,
 ) -> Vec<Value> {
     let mut kept: Vec<(u64, Value)> = rows
@@ -409,7 +414,7 @@ fn select_unmanaged(
 pub fn discover_sessions() -> Vec<Value> {
     let projects = home().join(".claude").join("projects");
     let managed = managed_session_ids();
-    let mut rows: Vec<(u64, String, Option<String>, Option<String>, bool)> = Vec::new();
+    let mut rows: Vec<UnmanagedRow> = Vec::new();
     let dirs = match fs::read_dir(&projects) {
         Ok(d) => d,
         Err(_) => return Vec::new(),
@@ -1361,7 +1366,7 @@ mod tests {
         bucket_by_status, date_to_days, discover_meta_lines, extract_pr_urls, frontmatter_values,
         lead_date, is_resumable_sid, merge_links, notes_records_session, parse_frontmatter,
         pick_pr_url, reopened_after_close, resolve_pr_links, root_for_notes_path,
-        session_history_info, Transcript,
+        session_history_info, Transcript, UnmanagedRow,
     };
     use crate::is_valid_session_id;
     use serde_json::json;
@@ -1373,7 +1378,7 @@ mod tests {
         managed.insert("managed-1".to_string());
 
         // 32 candidate rows with ascending mtime; two are special-cased.
-        let mut rows: Vec<(u64, String, Option<String>, Option<String>, bool)> = Vec::new();
+        let mut rows: Vec<UnmanagedRow> = Vec::new();
         for i in 0..32u64 {
             rows.push((i, format!("sid-{i}"), Some(format!("title {i}")), Some("/tmp/x".into()), false));
         }
