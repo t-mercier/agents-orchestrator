@@ -52,26 +52,24 @@ Terminal tabs don't scale. You need mission control.
 ## Features
 
 - **Live dashboard** — polled every 5s. Every session's status at a glance: **busy** · **idle** · **waiting** (pulsing) · **stale** (terminal gone, work not wrapped up) · **background shell**.
-- **Three views** — a grouped **List**, a full-width **Cards** grid, and a **Board** (kanban).
+- **Two views** — a grouped **List** and a **Board** (kanban).
 - **Kanban board** — drag to reorder (insertion line), **drop a card onto another to group** them (named, collapsible), **attach notes** to a card or group, flag **urgent**, and add sessions from the board itself. Generative **column colours** (pick one seed → a harmonious set across however many columns you have), with each column tinting its own accent.
 - **In-context detail** — click any card to open a **slide-over** with the session's goal, last activity, branch, Jira / PR links, and one-click **Resume / Restart / terminal** — without leaving the view.
 - **Start & resume your way** — open a **new** session or pick an existing one back up in the **built-in terminal** (in the app, xterm.js + portable-pty) *or* in **your own terminal** (iTerm / Terminal) — your choice, one toggle. Detach the built-in one into its own always-on-top window if you like.
-- **Keyboard-first** — arrows / `j` `k` to navigate, `Enter` to launch, `/` to search, `1`–`3` for tabs, `←/→` to switch tabs, `v` for view, `b` for board. **Remap any of it** in Settings → Shortcuts.
+- **Keyboard-first** — arrows / `j` `k` to navigate, `Enter` to launch, `/` to search, `1`–`3` for tabs, `←/→` to switch tabs, `v` to toggle list ⇄ board, `b` for board. **Remap any of it** in Settings → Shortcuts.
 - **Looks & density** — curated colour "looks" (accent + a subtle surface ambiance), a custom accent, and Detailed / Compact / Minimal card density. Dark & light themes.
 - **Lifecycle tabs** — Running · Closed · Archived, with live **search** and a **⚲ Filter** popover (category checkboxes, one control across every view).
-- **Spaces** — group categories under multiple named spaces (e.g. *Work*, *Perso*, a client). **List & Cards** organise into collapsible **space sections** → category groups; the **Board** gets its own space filter next to its search. Pinned and ⚡ waiting cards float above every space section — they're your shortlist, so they stay at the top of the column. A single space configured ⇒ no space chrome at all.
+- **Spaces** — group categories under multiple named spaces (e.g. *Work*, *Perso*, a client). The **List** organises into collapsible **space sections** → category groups; the **Board** gets its own space filter next to its search. Pinned and ⚡ waiting cards float above every space section — they're your shortlist, so they stay at the top of the column. A single space configured ⇒ no space chrome at all.
 - **Backup** — export / import all your settings to a file (handy before a reinstall).
 
-### Three ways to look at your work
+### Two ways to look at your work
 
-| Cards | Board |
+| List | Board |
 |:---:|:---:|
-| ![Cards view](docs/media/cards.png) | ![Kanban board](docs/media/board.png) |
-| Full-width grid — every session at a glance. | Kanban with groups, attached notes, urgent flags, and generative column colours. |
+| ![List view](docs/media/hero.png) | ![Kanban board](docs/media/board.png) |
+| Grouped by space → category, with the detail inline beside it. | Kanban with groups, attached notes, urgent flags, and generative column colours. |
 
-Click any session for a **detail slide-over** — goal, branch, links, and one-click Resume / Restart — without leaving the grid:
-
-![Detail slide-over over the cards grid](docs/media/cards-detail.png)
+On the Board, click any card for a **detail slide-over** — goal, branch, links, and one-click Resume / Restart — without leaving the board.
 
 Make it yours — curated colour "looks" (accent + a subtle surface ambiance), a custom accent, density, dark **and** light themes:
 

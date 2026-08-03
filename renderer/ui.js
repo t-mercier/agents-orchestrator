@@ -6,7 +6,7 @@ function applyCategoryColors(colorMap) {
   if (!colorMap) return
   const css = Object.entries(colorMap).map(([name, color]) => {
     const c = CSS.escape(name)
-    return `.session-card-cat[data-cat="${c}"],.category-name[data-cat="${c}"]{color:${color}}`
+    return `.category-name[data-cat="${c}"]{color:${color}}`
   }).join('')
   let el = document.getElementById('cat-colors')
   if (!el) { el = document.createElement('style'); el.id = 'cat-colors'; document.head.appendChild(el) }
@@ -57,7 +57,7 @@ function listReorgActive() {
 }
 
 // Display title with the redundant leading "<CATEGORY> | " prefix stripped — the
-// category is already shown (group header in list, badge on cards/board). Full name
+// category is already shown (group header in list, chip on the board). Full name
 // stays in the title= tooltip. Only strips when the name actually starts with it.
 function displayName(s) {
   const name = s.name || 'unnamed'
@@ -202,7 +202,7 @@ function firstNextStep(nextSteps) {
   return line.replace(/^[-*\d.)\]\s]+/, '').trim()
 }
 
-// Compact icon row (Jira ticket / PR / notes) shown on list + session cards. Reuses
+// Compact icon row (Jira ticket / PR / notes) shown on the list cards. Reuses
 // the detail-panel pills, so a click opens the link/folder via the delegated handlers
 // (which return early → the card isn't also selected). Visible in detailed + compact
 // density, hidden in minimal (CSS). Returns '' when the session has none of the three.
@@ -214,7 +214,7 @@ function cardIcons(s) {
   return icons ? `<div class="card-icons">${icons}</div>` : ''
 }
 
-// Status-derived render bits shared by the list + cards views: 'waiting' → a WAIT badge
+// Status-derived render bits for the list cards: 'waiting' → a WAIT badge
 // (the one state needing action — busy/idle rely on the coloured dot alone, Tufte: no
 // redundant ink); closed/archived/idle(no live pid) → greyed-white name via .historical.
 // No "stale" text badge — age (ageBadge) carries that signal instead, everywhere.
@@ -392,7 +392,7 @@ function groupBySpace(sessions) {
   })
 }
 
-// Empty / loading state for the session list + cards grid (shared). Distinguishes
+// Empty / loading state for the session list. Distinguishes
 // "still loading the first fetch" from genuinely empty, and a no-search-match.
 function emptyListMessage() {
   if (!window._sessionsLoaded) return `<div class="list-empty">Loading sessions…</div>`
@@ -405,7 +405,7 @@ function emptyListMessage() {
 }
 
 // Flash detection: keys whose activity advanced since the last render. Shared by the
-// list AND the cards grid so both light up on change. Skips the very first render.
+// list cards so they light up on change. Skips the very first render.
 function computeChangedKeys(sessions) {
   const changed = new Set()
   const firstRender = prevActivity.size === 0
@@ -493,70 +493,6 @@ function renderPanelList(sessions, selectedKey, changedKeys) {
 }
 
 // ── Right panel: session detail ──
-// ── Cards view: full-width grid ──
-
-function renderSessionCard(s, selectedKey, changed) {
-  // One-line "what was done" = the summary written by /save-session or /close-session
-  // (the latest Session-history line, running or historical). Raw transcript output is
-  // never shown; when there's no summary yet, the activity line is hidden entirely.
-  const preview = escapeHtml(truncate(s.lastSummary || '', 110))
-  const next = firstNextStep(s.nextSteps)
-  const cat = displayCategory(s)
-  const { dotClass, historical, badge } = statusBits(s)
-  return `
-    <div class="session-card ${dotClass} ${historical} ${sessionKey(s) === selectedKey ? 'selected' : ''} ${changed ? 'just-updated' : ''} ${isPinnedSession(s) ? 'pinned' : ''}"
-         data-key="${escapeHtml(sessionKey(s))}">
-      <div class="session-card-head">
-        <span class="status-dot ${dotClass}"></span>
-        <span class="session-card-name" title="${escapeHtml(s.name)}">${escapeHtml(displayName(s))}</span>
-        ${badge}
-        <span class="session-card-cat" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</span>
-        ${pauseBtn(s)}
-        ${closeBtn(s)}
-        ${archiveBtn(s)}
-        ${deleteBtn(s)}
-        ${pinBtn(s)}
-      </div>
-      ${preview ? `<div class="session-card-activity">${preview}</div>` : ''}
-      ${next ? `<div class="session-card-next" title="Next: ${escapeHtml(next)}">↪ ${escapeHtml(truncate(next, 90))}</div>` : ''}
-      <div class="session-card-foot">
-        ${cardIcons(s) || '<span></span>'}
-        ${ageBadge(s)}
-      </div>
-    </div>
-  `
-}
-
-function renderCardsGrid(sessions, selectedKey, changedKeys = new Set()) {
-  if (!sessions.length) { setHtml(document.getElementById('cards-grid'), emptyListMessage()); return }
-  // Pinned cards first, then by frozen rank.
-  const sortCards = (arr) => [...arr].sort((a, b) => {
-    const pa = isPinnedSession(a) ? 0 : 1, pb = isPinnedSession(b) ? 0 : 1
-    return pa !== pb ? pa - pb : rankOf(a) - rankOf(b)
-  })
-  const grid = (arr) => `<div class="cards-grid-inner">${
-    sortCards(arr).map(s => renderSessionCard(s, selectedKey, changedKeys.has(sessionKey(s)))).join('')}</div>`
-  let html
-  if (window.multiSpace && window.multiSpace()) {
-    // Expandable space sections (reuse .space-* markup + the collapse handler + the
-    // collapsedSpaces Set shared with the list), each wrapping its own cards grid.
-    html = groupBySpace(sessions).map(([space, sess]) => {
-      const collapsed = collapsedSpaces.has(space)
-      return `<div class="space-group">
-        <div class="space-header ${hasBusy(sess) ? 'has-active' : ''}" data-space="${escapeHtml(space)}">
-          <span class="space-chevron ${collapsed ? 'collapsed' : ''}">›</span>
-          <span class="space-name">${escapeHtml(space)}</span>
-          <span class="space-count">${sess.length}</span>
-        </div>
-        <div class="space-sessions ${collapsed ? 'collapsed' : ''}">${grid(sess)}</div>
-      </div>`
-    }).join('')
-  } else {
-    html = grid(sessions)
-  }
-  setHtml(document.getElementById('cards-grid'), html)
-}
-
 
 // Actions are an icon toolbar: a service logo where there is one (Jira/GitHub,
 // vendored under renderer/icons/), a clean line-icon otherwise, each with a hover
@@ -1064,7 +1000,7 @@ function renderDetailPanel(s, tab = 'running') {
 
   // Header: dot + name + (status badge only when it says something — IDLE is noise,
   // the dot colour already conveys it; busy/waiting + historical CLOSED/ARCHIVED stay).
-  // The terminal toggle now lives in Actions as an icon; detach/close show in cards mode.
+  // The terminal toggle now lives in Actions as an icon.
   // While the embedded terminal covers the info pane, the reference actions (ticket /
   // PR / notes / board) ride on the title line; the name (flex:1) ellipsizes to make room.
   const showBadge = isHistorical || (!!s.status && s.status !== 'idle')
@@ -1131,12 +1067,8 @@ function renderAll(sessions, selectedKey, tab = 'running', resort = false) {
   // Rebuild the sort order only when explicitly asked (tab switch, search, manual
   // refresh, initial load). On the 5s poll, resort=false keeps the order frozen.
   if (resort || sortRank.size === 0) rebuildSortRank(sessions)
-  // Render only the visible view — the other is display:none, so building its DOM
-  // on every 5s poll was wasted work + layout churn. setViewMode re-renders on switch.
-  const cardsMode = document.body.classList.contains('mode-cards')
-  const changedKeys = computeChangedKeys(sessions)   // shared so list AND cards flash
-  if (cardsMode) renderCardsGrid(sessions, selectedKey, changedKeys)
-  else renderPanelList(sessions, selectedKey, changedKeys)
+  const changedKeys = computeChangedKeys(sessions)   // keys whose activity advanced → flash
+  renderPanelList(sessions, selectedKey, changedKeys)
   updateTabBadges()   // refresh the per-tab counts
   let selected = sessions.find(s => sessionKey(s) === selectedKey) || null
   // While an embedded terminal is open, keep its session's detail panel alive even
@@ -1161,11 +1093,11 @@ function renderAll(sessions, selectedKey, tab = 'running', resort = false) {
   }
   if (!selected && termOpen && window._terminalSession) selected = window._terminalSession
   renderDetailPanel(selected, tab)
-  // In cards mode the detail panel is a drawer: keep it open while a session is
-  // selected OR an embedded terminal is up (so the terminal isn't torn down).
-  const drawerOpen = cardsMode && (!!selected || termOpen)
-  document.getElementById('panel-detail').classList.toggle('open', drawerOpen)
-  document.getElementById('scrim').classList.toggle('open', drawerOpen)
+  // The detail panel is INLINE in the list view — the only slide-over drawer left is
+  // the board's, and that one is opened directly by openBoardDetail (never a renderAll
+  // path). So any renderAll closes it: that's exactly how closeDrawer dismisses it.
+  document.getElementById('panel-detail').classList.remove('open')
+  document.getElementById('scrim').classList.remove('open')
 }
 
 // One delegated click handler on <body>, installed once. Because containers'
@@ -1239,7 +1171,7 @@ function liveTerminalKeyFor(sid, notesPath) {
 }
 window.liveTerminalKeyFor = liveTerminalKeyFor
 // The embedded terminal lives in the List view's detail panel — not the cramped
-// cards/board slide-over. So before opening it, leave any other view for List.
+// board slide-over. So before opening it, leave any other view for List.
 // (External-terminal resumes never call this — they open their own window.)
 function toListForEmbedded() {
   if (window.viewMode && window.viewMode !== 'list' && window.setViewMode) window.setViewMode('list')
@@ -1507,7 +1439,7 @@ function installDelegatedHandlers() {
       return
     }
 
-    const card = e.target.closest('.list-card[data-key], .session-card[data-key]')
+    const card = e.target.closest('.list-card[data-key]')
     if (card && window.selectSession) { window.selectSession(card.dataset.key); return }
   })
 }

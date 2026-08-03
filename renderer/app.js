@@ -42,7 +42,7 @@ window.refreshUnmanaged = function () {
   else { unmanagedState.loaded = false; unmanagedState.model = null }
 }
 
-let viewMode = 'list'    // 'list' | 'cards' | 'board'
+let viewMode = 'list'    // 'list' | 'board'
 let searchQuery = ''
 const activeCatFilters = new Set()  // empty = show all categories
 // Category order (config-driven, with fallback) is shared via renderer/lib/categories.js.
@@ -58,14 +58,14 @@ function configRoots() {
   }
   return []
 }
-// More than one space configured ⇒ the list + cards group into space sections and the
-// board shows its own space selector. A single space ⇒ no space chrome at all.
+// More than one space configured ⇒ the list groups into space sections and the board
+// shows its own space selector. A single space ⇒ no space chrome at all.
 window.multiSpace = () => configRoots().length > 1
 // Distinct category names for the filter popover (a name living in 2 spaces → one entry).
 function rootCategoryNames() { return [...new Set(filterCategories())] }
 
 // Active space filter — the ⚲ Filter popover's Spaces section (shown when >1 space).
-// Empty = all spaces. The list/cards also group by space sections; the board (flat)
+// Empty = all spaces. The list also groups by space sections; the board (flat)
 // relies on this filter for space scoping. window.passesSpaceFilter reads it (board).
 const activeSpaceFilters = new Set()
 window.passesSpaceFilter = (root) => activeSpaceFilters.size === 0 || root == null || activeSpaceFilters.has(root)
@@ -152,9 +152,9 @@ window.getLook = () => {
   } catch { return { id: 'ardoise', tint: '0,0,0', tintA: '0' } }
 }
 
-// Card density (detailed | compact | minimal): how much each list/session card
+// Card density (detailed | compact | minimal): how much each list card
 // shows. Applied as a data-attr on <html> so CSS hides/shows elements — no re-render
-// needed (cards always carry every element). 'detailed' = base CSS (no attr needed).
+// needed (the card markup always carries every element). 'detailed' = base CSS (no attr needed).
 const DENSITIES = ['detailed', 'compact', 'minimal']
 window.applyDensity = (d) => {
   const v = DENSITIES.includes(d) ? d : 'detailed'
@@ -177,7 +177,7 @@ window.getCompactChrome = () => { try { return localStorage.getItem('csm.compact
 const DEFAULT_KEYS = { search: '/', viewToggle: 'v', board: 'b', tabRunning: '1', tabClosed: '2', tabArchived: '3' }
 window.KEY_ACTIONS = [
   { id: 'search', label: 'Focus search' },
-  { id: 'viewToggle', label: 'Toggle list / cards' },
+  { id: 'viewToggle', label: 'Toggle list / board' },
   { id: 'board', label: 'Open board' },
   { id: 'tabRunning', label: 'Tab: Running' },
   { id: 'tabClosed', label: 'Tab: Closed' },
@@ -229,7 +229,7 @@ window.queryMatches = (text) => matchesSearch({ name: text || '' }, searchQuery)
 function renderCategoryFilters() {
   const n = activeCatFilters.size + activeSpaceFilters.size
   const btn = `<button class="filter-btn ${n ? 'active' : ''}" data-filter-open aria-label="Filter" title="Filter by space or category">⚲ <span class="btn-label">Filter</span>${n ? ` <span class="filter-count">${n}</span>` : ''}</button>`
-  for (const id of ['cat-filter-list', 'cat-filter-cards', 'cat-filter-board']) {
+  for (const id of ['cat-filter-list', 'cat-filter-board']) {
     const el = document.getElementById(id)
     if (el) el.innerHTML = btn
   }
@@ -492,14 +492,11 @@ function setViewMode(mode) {
   const prevMode = viewMode
   viewMode = mode
   window.viewMode = mode   // exposed for settings.js (refresh board after column edits)
-  document.body.classList.toggle('mode-cards', mode === 'cards')
   document.body.classList.toggle('mode-list', mode === 'list')
   document.body.classList.toggle('mode-board', mode === 'board')
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === mode)
   })
-  // Switching to cards: start with no drawer open
-  if (mode === 'cards') selectedKey = null
   if (mode === 'board') {
     // Board is global; the terminal pane belongs to the detail panel (hidden here).
     if (window.getTerminalVisible && window.getTerminalVisible()) window.hideTerminalPane()
@@ -516,7 +513,7 @@ function setViewMode(mode) {
   renderUnmanagedSection()
 }
 
-// Close the cards-mode drawer
+// Close the board's slide-over drawer
 function closeDrawer() {
   // Dismissing the drawer only hides the terminal (pty stays alive); "End session ✕" kills.
   if (window.getTerminalVisible && window.getTerminalVisible()) window.hideTerminalPane()
@@ -525,12 +522,12 @@ function closeDrawer() {
   renderAll(filterSessions(sessions, searchQuery), selectedKey, activeTab, false)
 }
 
-// Search — both fields (sidebar + cards topbar) drive the same query
-const SEARCH_FIELD_IDS = ['search-field', 'cards-search', 'board-search']
+// Search — both fields (sidebar + board filterbar) drive the same query
+const SEARCH_FIELD_IDS = ['search-field', 'board-search']
 function onSearchInput(e) {
   searchQuery = e.target.value.trim()
   selectedKey = null
-  // keep all three search fields (list / cards / board) in sync
+  // keep both search fields (list / board) in sync
   for (const id of SEARCH_FIELD_IDS) {
     const el = document.getElementById(id)
     if (el && el !== e.target && el.value !== e.target.value) el.value = e.target.value
@@ -994,7 +991,7 @@ document.getElementById('scrim').addEventListener('click', closeDrawer)
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return
   const drawerOpen = document.getElementById('panel-detail').classList.contains('open')
-  if ((viewMode === 'cards' && selectedKey) || (viewMode === 'board' && drawerOpen)) closeDrawer()
+  if (viewMode === 'board' && drawerOpen) closeDrawer()
 })
 
 // ── Keyboard navigation (power-user / flow) ──
@@ -1009,7 +1006,7 @@ function clearSearch() {
 }
 // The visible session keys, in DOM/render order (respects groups, sort, filter).
 function visibleSessionKeys() {
-  const sel = viewMode === 'cards' ? '#cards-grid .session-card[data-key]' : '#panel-list .list-card[data-key]'
+  const sel = '#panel-list .list-card[data-key]'
   return [...document.querySelectorAll(sel)].map(el => el.dataset.key)
 }
 // Lightweight selection move for keyboard nav: toggle .selected in place + refresh
@@ -1041,7 +1038,7 @@ document.addEventListener('keydown', (e) => {
   // Esc inside a search field clears + blurs it (otherwise let other handlers act).
   if (e.key === 'Escape') {
     const el = document.activeElement
-    if (typing && (el.id === 'search-field' || el.id === 'cards-search')) {
+    if (typing && (el.id === 'search-field' || el.id === 'board-search')) {
       clearSearch(); el.blur(); e.preventDefault()
     }
     return
@@ -1054,14 +1051,14 @@ document.addEventListener('keydown', (e) => {
     return key && (e.key === key || (e.key.length === 1 && key.length === 1 && e.key.toLowerCase() === key.toLowerCase()))
   }
   if (km('search')) {
-    const el = document.getElementById(viewMode === 'cards' ? 'cards-search' : viewMode === 'board' ? 'board-search' : 'search-field')
+    const el = document.getElementById(viewMode === 'board' ? 'board-search' : 'search-field')
     if (el) { el.focus(); el.select(); e.preventDefault() }
     return
   }
   if (km('tabRunning')) { switchTab('running'); e.preventDefault(); return }
   if (km('tabClosed')) { switchTab('closed'); e.preventDefault(); return }
   if (km('tabArchived')) { switchTab('archived'); e.preventDefault(); return }
-  if (km('viewToggle')) { setViewMode(viewMode === 'cards' ? 'list' : 'cards'); e.preventDefault(); return }
+  if (km('viewToggle')) { setViewMode(viewMode === 'board' ? 'list' : 'board'); e.preventDefault(); return }
   if (km('board')) { setViewMode('board'); e.preventDefault(); return }
   // Board: 2D arrow/hjkl navigation between cards & columns; Enter opens the slide-over.
   if (viewMode === 'board') {
@@ -1072,10 +1069,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { window.boardOpenFocused && window.boardOpenFocused(); e.preventDefault(); return }
     return
   }
-  // ←/→ cycle the Running/Closed/Archived tab (list + cards views — board owns ←/→).
+  // ←/→ cycle the Running/Closed/Archived tab (list view — board owns ←/→).
   if (e.key === 'ArrowLeft') { cycleTab(-1); e.preventDefault(); return }
   if (e.key === 'ArrowRight') { cycleTab(1); e.preventDefault(); return }
-  // Arrow / vim selection + Enter to launch — list view only (cards opens a drawer).
+  // Arrow / vim selection + Enter to launch — list view only (the board has its own 2D nav).
   if (viewMode === 'list') {
     if (e.key === 'ArrowDown' || e.key === 'j') { moveSelection(1); e.preventDefault(); return }
     if (e.key === 'ArrowUp' || e.key === 'k') { moveSelection(-1); e.preventDefault(); return }
