@@ -694,7 +694,7 @@ function canResume(s) {
 function itermPill(s) {
   if (!canResume(s)) return ''
   return `<button class="act pill" aria-label="Resume in your terminal" data-tip="Resume in your terminal (new window)"
-           data-cwd="${escapeHtml(s.cwd || '')}" data-session="${escapeHtml(s.sessionId)}">${svgIcon('<path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/>')}</button>`
+           data-cwd="${escapeHtml(s.cwd || '')}" data-session="${escapeHtml(s.sessionId)}" data-notes="${escapeHtml(s.notesPath || '')}">${svgIcon('<path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/>')}</button>`
 }
 
 function notesPill(notesPath) {
@@ -1125,7 +1125,16 @@ async function warnAlreadyRunning(sid, body, proceed) {
 // Shared by the detail-panel Option-A buttons, the Enter key, and the hover quick-
 // actions on cards — all route through these so the "already running" guard and the
 // embedded-vs-external split stay in one place.
+// Resuming archived work un-archives it: strip the ARCHIVED marker so the session rejoins
+// the live lifecycle (it lands in Closed/stale when it stops, instead of snapping straight
+// back to Archived the moment its terminal dies). No-op when there's no marker;
+// fire-and-forget so a failure never blocks the resume. Called from every resume path.
+function unarchiveOnResume(notesPath) {
+  if (notesPath && window.api && window.api.unarchiveSession) window.api.unarchiveSession(notesPath)
+}
+
 function routeResume(sid, cwd, notesPath) {
+  unarchiveOnResume(notesPath)
   const dest = window.getOpenIn ? window.getOpenIn() : 'embedded'
   const liveKey = window.liveTerminalKeyFor ? window.liveTerminalKeyFor(sid, notesPath) : null
   if (dest === 'terminal') {
@@ -1268,7 +1277,10 @@ function installDelegatedHandlers() {
     const iterm = e.target.closest('.pill[data-cwd]')
     if (iterm) {
       const sid = iterm.dataset.session
-      const open = () => window.api.openInTerminal(iterm.dataset.cwd, sid)
+      const open = () => {
+        unarchiveOnResume(iterm.dataset.notes || '')
+        window.api.openInTerminal(iterm.dataset.cwd, sid)
+      }
       // Already live (running, or we already hold an embedded terminal)? Opening
       // another instance attaches a second process to the same session — warn first.
       const live = (window.isSessionLive && window.isSessionLive(sid)) ||
@@ -1292,7 +1304,10 @@ function installDelegatedHandlers() {
       const liveKey = window.liveTerminalKeyFor && window.liveTerminalKeyFor(sid, notes)
       // Already hold a terminal for this session (any key)? Reveal it; no new process.
       if (liveKey && window.openTerminalPane) { window.openTerminalPane(liveKey, term.dataset.cwd || ''); return }
-      const go = () => window.toggleEmbeddedTerminal(sid, term.dataset.cwd, term.dataset.restartSlug || '', notes)
+      const go = () => {
+        unarchiveOnResume(notes)
+        window.toggleEmbeddedTerminal(sid, term.dataset.cwd, term.dataset.restartSlug || '', notes)
+      }
       // Only warn when it's live elsewhere (running, not ours).
       const alreadyEmbedded = !!liveKey
       if (!alreadyEmbedded && window.isSessionLive && window.isSessionLive(sid)) {

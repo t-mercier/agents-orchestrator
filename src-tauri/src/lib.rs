@@ -875,6 +875,40 @@ fn remove_from_active_sessions(notes_path: &str, abs: &std::path::Path) -> Resul
     Ok(())
 }
 
+/// Drop every genuine ARCHIVED marker line from the notes. A marker is a pipe-delimited
+/// entry whose own field is exactly `ARCHIVED` (what stamp_archived writes) — prose that
+/// merely mentions the word is preserved, matching reader.rs::session_history_info. Pure +
+/// unit-tested; idempotent, so it's safe to run on every resume. Mirrors the un-archive
+/// step of the /restart-session skill.
+fn strip_archived(content: &str) -> String {
+    let kept: Vec<&str> = content
+        .lines()
+        .filter(|l| {
+            !(l.trim_start().starts_with('-') && l.split('|').any(|seg| seg.trim() == "ARCHIVED"))
+        })
+        .collect();
+    let mut out = kept.join("\n");
+    if content.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
+/// Un-archive a session: strip its ARCHIVED marker so resuming archived work pulls it
+/// back into the live lifecycle (it lands in Closed/stale when it stops, not straight
+/// back into Archived). Called on every resume — a no-op when there's no marker. Writes
+/// are atomic and confined to a real notes.md under a configured root.
+#[tauri::command(async)]
+fn unarchive_session(notes_path: String) -> Result<(), String> {
+    let abs = notes_md_under_root(&notes_path)?;
+    let content = std::fs::read_to_string(&abs).map_err(|e| e.to_string())?;
+    let stripped = strip_archived(&content);
+    if stripped == content {
+        return Ok(()); // nothing to do — don't rewrite the file
+    }
+    atomic_write(&abs, &stripped)
+}
+
 /// Archive a session FROM THE DASHBOARD (ADR-013 — the app's one source-of-truth
 /// write, a deliberate derogation from ADR-001): stamps ARCHIVED into notes.md and
 /// drops the session from active-sessions.json. Mirrors the /archive-session skill. Writes
@@ -1255,6 +1289,7 @@ pub fn run() {
             export_settings,
             import_settings,
             archive_session,
+            unarchive_session,
             delete_session,
             set_pr_links,
             set_tickets,
@@ -1286,7 +1321,8 @@ mod tests {
     use super::{
         category_root_dir, is_deletable_session_dir, is_pr_url, is_safe_branch, is_safe_category,
         is_safe_slug, is_ticket, is_valid_session_id, parse_usage, percent_encode, sanitize_session_name,
-        set_frontmatter_links, slugify, stamp_archived, usage_view, validate_root_override,
+        set_frontmatter_links, slugify, stamp_archived, strip_archived, usage_view,
+        validate_root_override,
     };
     use crate::reader;
     use serde_json::{json, Value};
@@ -1390,6 +1426,29 @@ mod tests {
     }
 
     const LINE: &str = "- 2026-06-14 10:00 | ARCHIVED | archived from the dashboard";
+
+    #[test]
+    fn strip_archived_removes_only_genuine_marker_lines() {
+        // A pipe-delimited `| ARCHIVED |` entry is dropped; the rest is untouched.
+        let content = "## Session history\n\
+            - 2026-06-10 | session=abc | did stuff\n\
+            - 2026-06-14 10:00 | ARCHIVED | archived from the dashboard\n\
+            \n## Notes\nkeep me\n";
+        let out = strip_archived(content);
+        assert!(!out.contains("ARCHIVED"));
+        assert!(out.contains("did stuff"));
+        assert!(out.contains("keep me"));
+
+        // Prose merely MENTIONING archived must survive (same guard as the reader).
+        let prose = "## Session history\n- 2026-06-10 | session=abc | discussed the ARCHIVED marker\n";
+        assert_eq!(strip_archived(prose), prose);
+
+        // No marker at all → unchanged (idempotent, safe to call on every resume).
+        let plain = "## Session history\n- 2026-06-10 | session=abc | did stuff\n";
+        assert_eq!(strip_archived(plain), plain);
+        // Idempotent: stripping twice equals stripping once.
+        assert_eq!(strip_archived(&strip_archived(content)), strip_archived(content));
+    }
 
     // ── Injection-boundary allowlists ──────────────────────────────────────────
     #[test]

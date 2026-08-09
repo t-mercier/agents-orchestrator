@@ -73,6 +73,10 @@
       invoke('archive_session', { notesPath: notesPath || '' })
         .then(() => ({ ok: true }))
         .catch((e) => ({ ok: false, error: String(e) })),
+    unarchiveSession: (notesPath) =>
+      invoke('unarchive_session', { notesPath: notesPath || '' })
+        .then(() => ({ ok: true }))
+        .catch((e) => ({ ok: false, error: String(e) })),
 
     // ── Delete an archived session: move its folder to the OS Trash (recoverable) ──
     deleteSession: (notesPath) =>
