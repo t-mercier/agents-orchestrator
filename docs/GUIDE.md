@@ -97,6 +97,9 @@ You run these inside Claude Code (the dashboard buttons trigger them for you). C
 | **`/archive-session <slug>`** | Marks a session archived and drops it from the active list (the notes file is kept). → *Archived* |
 | **`/import-session <slug>`** | Adopts an unmanaged Claude Code session into management under a chosen space and category. |
 | **`/rename-category <OLD> <NEW>`** | Renames a category everywhere — moves its folder, re-tags every `notes.md`, updates the config. (The app is read-only, so renaming *there* alone would orphan sessions — this skill does the real move.) |
+| **`/skill-propose`** | Stages what this session taught as a reusable skill — or, preferably, a patch to one you already have. Only fires when something reusable actually came up. Writes to `~/.claude/skills-pending/`, never to `skills/`. |
+| **`/skills-review`** | Shows a staged proposal (full content, or a real diff) and promotes it only once you approve. Nothing becomes active any other way. |
+| **`/skills-curate`** | Occasional housekeeping over the whole set: refreshes per-skill usage from your transcripts, flags what has gone dormant, and proposes merging skills that should be one. Never deletes — archives. |
 
 ## A typical day
 

@@ -168,6 +168,12 @@ def vault_for(cfg, name):
     return expand(obs.get(key) or '')
 
 
+def flag(cfg, key):
+    """A boolean opt-in from the config root. Prints 'on'/'' so a shell `[ -n ... ]`
+    test reads naturally. Unknown keys are off — an optional step stays off by default."""
+    return 'on' if cfg.get(key) is True else ''
+
+
 def find_notes(cfg, slug):
     out, seen = [], set()
     entries = categories(cfg) or [{'name': n} for n in DEFAULT_CATEGORIES]
@@ -183,7 +189,7 @@ def main():
     args = sys.argv[1:]
     cfg = load()
     if not args:
-        print("usage: aoconfig.py categories|roots|rootpath|root|scope|base|dir|vault|find [args]")
+        print("usage: aoconfig.py categories|roots|rootpath|root|scope|base|dir|vault|flag|find [args]")
         return
     cmd = args[0]
     if cmd == 'categories':
@@ -197,6 +203,8 @@ def main():
     elif cmd == 'root' and len(args) >= 2:
         entry = find_entry(cfg, args[1]) or {'name': args[1]}
         print(root_name_of(entry))
+    elif cmd == 'flag' and len(args) >= 2:
+        print(flag(cfg, args[1]))
     elif cmd in ('scope', 'vault') and len(args) >= 2:
         print({'scope': scope_of, 'vault': vault_for}[cmd](cfg, args[1]))
     elif cmd == 'base' and len(args) >= 2:

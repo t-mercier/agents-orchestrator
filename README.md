@@ -8,7 +8,7 @@
 
 [![Live site](https://img.shields.io/badge/%F0%9F%8C%90%20Live%20site-visit-9b8cff?style=for-the-badge)](https://t-mercier.github.io/ai-agents-orchestrator/)
 
-[![Version](https://img.shields.io/badge/version-0.4.1--alpha-9b8cff)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0--alpha-9b8cff)](CHANGELOG.md)
 [![CI](https://img.shields.io/github/actions/workflow/status/t-mercier/ai-agents-orchestrator/ci.yml?branch=master)](https://github.com/t-mercier/ai-agents-orchestrator/actions)
 [![License: Source Available](https://img.shields.io/badge/license-Source%20Available-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-13+-000000?style=flat&logo=apple)](https://www.apple.com/macos/)
@@ -59,6 +59,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > ## What's new
 > Newest first — full history in the [changelog](CHANGELOG.md).
 >
+> - 🎓 **The skills can learn** — after a session that taught something reusable, `/skill-propose` stages it as a new skill or a patch to an existing one; `/skills-review` is the only way it goes live, and `/skills-curate` keeps the set from inflating. Nothing is auto-applied, nothing is ever deleted, and usage comes from your transcripts. Off unless you set `skillProposals: true`.
 > - 🔗 **Several PRs / tickets per session** — a task split across two PRs, or an epic plus its sub-task, no longer has to pick one. The icon shows a count and opens a picker; the editor takes one entry per line and works on any session, not just REVIEW.
 > - 📌 **Pinned sessions sit at the top of the column** — they used to float per space (and before that, per category), which defeated the point. One block at the top, just under ⚡ Needs you.
 > - 🧹 **Cards view removed** — it overlapped the Board without being as useful, so the app is List + Board. Card density stays, applied to the list cards.
@@ -179,6 +180,9 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/restart-session <slug>` | Reload a session's notes **and its recorded session id** into a fresh session (history stays linked) |
 | `/archive-session <slug>` | Mark a session archived (drops it from the active list) |
 | `/rename-category <OLD> <NEW>` | Rename a category everywhere — moves the folder, re-tags notes, updates config |
+| `/skill-propose` | Stage what this session taught as a new skill — or a patch to an existing one — in `~/.claude/skills-pending/`. Never writes to `skills/` |
+| `/skills-review` | The approval gate: list, diff, then approve or reject a staged proposal. The only path by which one goes live |
+| `/skills-curate` | Periodic pass over the whole set: refresh usage, report `active`/`stale`/`archived`, stage merges of overlapping skills |
 
 Categories, note locations and Obsidian vaults all come from your shared config, so the skills and the app stay in sync. The installer won't overwrite a customised skill unless you pass `--force`.
 
