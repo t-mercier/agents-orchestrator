@@ -166,6 +166,44 @@ json.dump(data, open(tmp, 'w'), indent=2); os.replace(tmp, p)
 EOF
 ```
 
+### Step 4.1 — Point the notes.md frontmatter at THIS session
+
+Registering in `active-sessions.json` is not enough: the dashboard resolves a
+historical card from the notes.md **frontmatter** `session_id:`. Leaving it on the
+previous id makes the card offer to resume the OLD conversation while the registry
+points at the new one — the two disagree, and Resume silently reopens the wrong
+session. Rewrite it now, so registry and notes agree.
+
+```bash
+python3 - <<EOF
+import os
+p = "$NOTES_PATH"
+sid = "$SESSION_ID"
+lines = open(p).read().splitlines()
+if not lines or lines[0].strip() != '---':
+    print("WARN: no frontmatter — session_id NOT updated")
+else:
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == '---'), None)
+    if end is None:
+        print("WARN: unterminated frontmatter — session_id NOT updated")
+    else:
+        for i in range(1, end):
+            if lines[i].startswith('session_id:'):
+                lines[i] = f'session_id: {sid}'
+                break
+        else:
+            lines.insert(1, f'session_id: {sid}')
+        tmp = p + '.tmp'
+        open(tmp, 'w').write("\n".join(lines) + "\n")
+        os.replace(tmp, p)
+        print(f"frontmatter session_id → {sid}")
+EOF
+```
+
+No Session-history line is written here on purpose: a completed-looking entry would
+classify the session as **Closed** the moment it restarts. The next `/save-session`
+(in progress) or `/close-session` writes it with the right status.
+
 ### Step 4.5 — Un-archive (revive into the lifecycle)
 
 If this session was previously archived, its `## Session history` has an `ARCHIVED`
