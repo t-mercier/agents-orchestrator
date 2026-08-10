@@ -174,7 +174,8 @@ html, body {
 .modal-field .field-hint { color: var(--text-tertiary); font-weight: 400; line-height: 1.5; margin-top: 2px; }
 .modal-field .field-hint code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 10px; color: var(--text-secondary); background: rgba(var(--tint), 0.08); padding: 1px 4px; border-radius: 4px; }
 .modal-field select,
-.modal-field input {
+.modal-field input,
+.modal-field textarea {
   font-family: var(--font);
   font-size: 13px;
   color: var(--text-primary);
@@ -183,6 +184,15 @@ html, body {
   border-radius: 7px;
   padding: 7px 10px;
   outline: none;
+}
+/* Multi-line fields are the same control, just taller: no OS resize grip (it breaks the
+   dialog's layout) and a monospace face, since every line is a URL or an id. */
+.modal-field textarea {
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 62px;
 }
 /* Unify all <select> dropdowns: drop the OS chrome + draw our own chevron, so every
    selection control reads the same on-brand way across the app (was native/inconsistent). */
@@ -198,6 +208,7 @@ html, body {
 .modal-field select:hover { border-color: rgba(var(--tint), 0.22); }
 .modal input[type="checkbox"] { accent-color: var(--accent); }
 .modal-field select:focus,
+.modal-field textarea:focus,
 .modal-field input:focus { border-color: var(--accent); background: rgba(var(--tint), 0.1); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .modal-btn {
@@ -533,19 +544,6 @@ body.kb-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 .link-menu-edit { color: var(--text-secondary); font-weight: 500; }
 .link-menu-edit:hover { color: var(--accent); }
 .board-menu-item[disabled] { opacity: 0.45; cursor: default; }
-
-/* Inline PR / ticket editor — one entry per line. */
-.pr-editor { position: fixed; z-index: 1000; width: 360px; max-width: calc(100vw - 16px); overflow-y: auto; background: var(--surface-modal); border: 0.5px solid rgba(var(--tint), 0.14); border-radius: 10px; box-shadow: 0 16px 44px rgba(0,0,0,0.45); padding: 12px; }
-.pr-editor-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); padding-bottom: 8px; }
-.pr-editor-hint { font-size: 11px; color: var(--text-tertiary); margin-bottom: 7px; line-height: 1.4; }
-.pr-editor-input { width: 100%; box-sizing: border-box; font-family: var(--font); font-size: 12px; color: var(--text-primary); background: rgba(var(--tint), 0.1); border: 0.5px solid var(--accent); border-radius: 6px; padding: 6px 8px; outline: none; }
-textarea.pr-editor-input { resize: vertical; min-height: 56px; line-height: 1.5; }
-.pr-editor-err { font-size: 11px; color: var(--danger); margin-top: 6px; }
-.pr-editor-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
-.pr-editor-btn { font-family: var(--font); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 0.5px solid rgba(var(--tint), 0.18); background: rgba(var(--tint), 0.06); color: var(--text-primary); cursor: pointer; }
-.pr-editor-save { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.pr-editor-remove { color: var(--text-secondary); }
-.pr-editor-remove:hover { color: var(--danger); }
 
 /* ===== View Modes ===== */
 /* Board mode: hide the tabbed list UI; show the full-width board. */
