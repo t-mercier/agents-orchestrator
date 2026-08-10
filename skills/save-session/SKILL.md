@@ -155,6 +155,28 @@ dashboard keeps the session in Running (a checkpoint, NOT a close):
 Do NOT write a close-style entry here — that's `/close-session`'s job. `/save-session`
 only checkpoints; the session stays open.
 
+## Step 6b — Optional: propose a skill from what this session taught (gated)
+
+The procedural twin of the Obsidian distil above: that one promotes *facts*, this one
+promotes *how we got there*. Gated, so it is off unless explicitly enabled:
+
+```bash
+PROPOSE=$(python3 ~/.claude/skills/lib/aoconfig.py flag skillProposals)
+```
+
+**`$PROPOSE` empty** → skip **silently**. Do not mention it in the confirmation.
+
+**`$PROPOSE` = `on`** → follow the `/skill-propose` skill against this session (its Steps
+1–4). Do not restate its criteria here — that skill owns them. Two properties matter:
+
+- It is **silent unless one of its four criteria actually fired**, so an ordinary session
+  produces nothing. No proposal is the normal outcome.
+- It **never writes into `~/.claude/skills/`**. Proposals are staged under
+  `~/.claude/skills-pending/` and only `/skills-review` can promote them.
+
+Mention a staged proposal in the confirmation (one line, with which criterion fired);
+say nothing when there is none.
+
 ## Step 7 — Confirm
 
 Print a short confirmation: frontmatter refresh result (PR link / ticket updated, or already set), which sections were updated + the `(in progress)` history
