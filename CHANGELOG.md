@@ -10,6 +10,11 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1-alpha] - 2026-08-10
+
+### Fixed
+- **The reference textareas look like every other modal field** — the Edit dialog's Tickets and Pull-requests boxes were added with no styling, so they rendered with the browser's default chrome next to the app's own inputs. They now share the input rule (same background, border, radius and focus accent), in a monospace face and without the resize grip that broke the dialog's layout.
+
 ## [0.6.0-alpha] - 2026-08-10
 
 ### Added
