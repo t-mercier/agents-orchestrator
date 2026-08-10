@@ -1279,6 +1279,7 @@ pub fn run() {
             reader::get_historical_sessions,
             reader::get_historical_sessions_all,
             reader::discover_sessions,
+            reader::discover_sessions_page,
             open_external,
             open_path,
             open_in_terminal,

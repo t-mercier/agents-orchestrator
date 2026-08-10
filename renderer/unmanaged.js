@@ -17,6 +17,19 @@
     return parts[parts.length - 1] || ''
   }
 
+  // A short, human name for a session: its own first prompt, which actually says what the
+  // work is. The cwd basename is only a fallback — a session started in ~/TomTom would
+  // otherwise be adopted as "TomTom", which names the folder rather than the task.
+  function suggestName(session) {
+    const title = String(session.title || '').trim()
+    if (title) {
+      const firstLine = title.split('\n')[0].trim()
+      const clipped = firstLine.length > 60 ? firstLine.slice(0, 60).replace(/\s+\S*$/, '') : firstLine
+      if (clipped) return clipped
+    }
+    return basename(session.cwd || '')
+  }
+
   function buildUnmanagedModel(sessions, now) {
     const list = Array.isArray(sessions) ? sessions : []
     if (!list.length) return { empty: true, rows: [] }
@@ -25,7 +38,7 @@
       title: s.title || '(untitled session)',
       cwd: s.cwd || '',
       when: s.mtime ? F.formatTimestamp(new Date(s.mtime * 1000).toISOString(), now) : '',
-      defaultName: basename(s.cwd || ''),
+      defaultName: suggestName(s),
     }))
     return { empty: false, rows }
   }
@@ -38,7 +51,7 @@
         <span class="unmanaged-row-meta">${esc(r.cwd)}</span>
         ${r.when ? `<span class="unmanaged-row-when">${esc(r.when)}</span>` : ''}
       </div>
-      <button type="button" class="unmanaged-adopt" data-adopt-sid="${esc(r.sessionId)}" data-adopt-name="${esc(r.defaultName)}">Adopt</button>
+      <button type="button" class="unmanaged-adopt" data-adopt-sid="${esc(r.sessionId)}" data-adopt-name="${esc(r.defaultName)}" data-adopt-title="${esc(r.title)}">Adopt</button>
     </div>`
   }
 
@@ -63,5 +76,5 @@
     </div>`
   }
 
-  return { basename, buildUnmanagedModel, unmanagedSectionHtml }
+  return { basename, suggestName, buildUnmanagedModel, unmanagedSectionHtml }
 })

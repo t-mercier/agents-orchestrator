@@ -801,6 +801,35 @@ body.mode-board .drawer-ctl { display: inline-flex; }
   -webkit-app-region: no-drag;
 }
 /* ── Category filter: ⚲ button + checkbox popover (replaces the chip row) ── */
+/* ＋Import sits at the left of the list's filter row; the filter is pushed to the right.
+   Scoped to the list row so the board's filter bar keeps its own layout. */
+.import-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  color: var(--text-secondary); background: rgba(var(--tint), 0.06);
+  border: 0.5px solid var(--card-border); border-radius: 7px;
+  padding: 4px 10px; cursor: pointer; -webkit-app-region: no-drag;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.import-btn:hover { color: var(--text-primary); border-color: var(--accent); background: rgba(var(--tint), 0.1); }
+#cat-filter-list .filter-btn { margin-left: auto; }
+
+/* Import modal — single-session mode header + the browse list's pager. */
+.import-target {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0;
+  padding: 8px 10px; margin-bottom: 4px;
+  border: 0.5px solid var(--card-border); border-radius: 8px; background: rgba(var(--tint), 0.05);
+}
+.import-target-label { font-size: 11px; color: var(--text-tertiary); flex: none; }
+.import-target-name { font-size: 12px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-more {
+  display: block; width: 100%; margin: 6px 0 2px;
+  font-family: var(--font); font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  background: rgba(var(--tint), 0.06); border: 0.5px solid var(--card-border);
+  border-radius: 7px; padding: 5px 10px; cursor: pointer;
+}
+.import-more:hover { color: var(--text-primary); border-color: var(--accent); }
+
 .filter-btn {
   display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--font); font-size: 11px; font-weight: 600;

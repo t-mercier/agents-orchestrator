@@ -22,6 +22,10 @@
     getHistoricalAll: () => invoke('get_historical_sessions_all'),
     // Unmanaged transcripts (no notes.md) for the "Import a session" picker.
     discoverSessions: () => invoke('discover_sessions'),
+    // One page of ALL untracked sessions + the full count → { sessions, total }.
+    discoverSessionsPage: (limit, offset) =>
+      invoke('discover_sessions_page', { limit, offset })
+        .catch(() => ({ sessions: [], total: 0 })),
     // Never let a rejected open (unsupported scheme) become an unhandled promise
     // rejection — that made a link click look like it did nothing at all.
     openExternal: (url) =>

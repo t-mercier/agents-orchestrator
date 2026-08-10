@@ -114,16 +114,22 @@
        writes the notes.md; the app only launches — ADR-012). -->
   <dialog id="import-modal" class="modal">
     <div class="modal-form">
-      <h2 class="modal-title">Import a session</h2>
-      <p class="modal-hint">Adopt an existing Claude Code session the dashboard isn't tracking yet. Pick one — it resumes and gets a <code>notes.md</code> so it shows up like a managed session.</p>
-      <input id="import-search" class="search-field" type="search" placeholder="Search recent sessions…" spellcheck="false" autocomplete="off">
-      <div id="import-list" class="import-list"></div>
-      <!-- Import a session that isn't in the recent list — paste its ID directly. When
-           filled, it overrides the selection above (populated in app.js). -->
-      <label class="modal-field">
-        <span class="modal-label">…or paste a session ID</span>
-        <input id="import-uid" type="text" placeholder="session ID — imports one not listed above" autocomplete="off" spellcheck="false">
-      </label>
+      <h2 class="modal-title" id="import-title">Import a session</h2>
+      <p class="modal-hint" id="import-hint">Adopt an existing Claude Code session the dashboard isn't tracking yet. Pick one — it resumes and gets a <code>notes.md</code> so it shows up like a managed session.</p>
+      <!-- Single-session mode (Adopt on a row): the session is already chosen, so the
+           picker is hidden entirely and we just show which one is being adopted. -->
+      <div id="import-target" class="import-target" hidden></div>
+      <!-- Browse mode (＋Import): search + page through EVERY unmanaged session, or paste
+           an id for one that isn't listed. Hidden in single-session mode. -->
+      <div id="import-browse">
+        <input id="import-search" class="search-field" type="search" placeholder="Search sessions…" spellcheck="false" autocomplete="off">
+        <div id="import-list" class="import-list"></div>
+        <button type="button" id="import-more" class="import-more" hidden>Load more</button>
+        <label class="modal-field">
+          <span class="modal-label">…or paste a session ID</span>
+          <input id="import-uid" type="text" placeholder="session ID — imports one not listed above" autocomplete="off" spellcheck="false">
+        </label>
+      </div>
       <!-- Space picker — shown only when more than one space is configured (toggled in
            app.js). Filters the category list + decides which space the import lands under. -->
       <label class="modal-field" id="import-space-field" hidden>

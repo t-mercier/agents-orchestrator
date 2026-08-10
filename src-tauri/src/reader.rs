@@ -396,6 +396,14 @@ fn select_unmanaged(
     rows: Vec<UnmanagedRow>,
     managed: &std::collections::HashSet<String>,
 ) -> Vec<Value> {
+    sorted_unmanaged(rows, managed).into_iter().take(30).collect()
+}
+
+/// Every surviving row, newest first — the shared core of the capped and paginated views.
+fn sorted_unmanaged(
+    rows: Vec<UnmanagedRow>,
+    managed: &std::collections::HashSet<String>,
+) -> Vec<Value> {
     let mut kept: Vec<(u64, Value)> = rows
         .into_iter()
         .filter(|(_, sid, _, _, skip)| !skip && !managed.contains(sid))
@@ -404,7 +412,22 @@ fn select_unmanaged(
         })
         .collect();
     kept.sort_by_key(|(mtime, _)| std::cmp::Reverse(*mtime));
-    kept.into_iter().take(30).map(|(_, v)| v).collect()
+    kept.into_iter().map(|(_, v)| v).collect()
+}
+
+/// One page of unmanaged sessions plus the FULL count, so the caller knows whether a
+/// "load more" is worth offering without fetching everything. An offset past the end
+/// yields an empty page rather than an error.
+fn select_unmanaged_page(
+    rows: Vec<UnmanagedRow>,
+    managed: &std::collections::HashSet<String>,
+    limit: usize,
+    offset: usize,
+) -> Value {
+    let all = sorted_unmanaged(rows, managed);
+    let total = all.len();
+    let page: Vec<Value> = all.into_iter().skip(offset).take(limit).collect();
+    json!({ "sessions": page, "total": total })
 }
 
 /// The most-recent *unmanaged* Claude Code transcripts (`~/.claude/projects/**/<id>.jsonl`
@@ -412,12 +435,29 @@ fn select_unmanaged(
 /// 30 newest by mtime (the picker is for recent work; older ones aren't the use case).
 #[tauri::command(async)]
 pub fn discover_sessions() -> Vec<Value> {
+    let (rows, managed) = scan_unmanaged_rows();
+    select_unmanaged(rows, &managed)
+}
+
+/// One page of ALL unmanaged sessions (newest first) + the full count — what the import
+/// picker browses when 30 isn't enough. `limit` is clamped so a bad caller can't ask the
+/// renderer to paint tens of thousands of rows.
+#[tauri::command(async)]
+pub fn discover_sessions_page(limit: Option<usize>, offset: Option<usize>) -> Value {
+    let limit = limit.unwrap_or(20).clamp(1, 200);
+    let (rows, managed) = scan_unmanaged_rows();
+    select_unmanaged_page(rows, &managed, limit, offset.unwrap_or(0))
+}
+
+/// Walk `~/.claude/projects/**/<id>.jsonl` once, returning the raw rows + the managed set.
+/// Shared by both commands so the scan (and its skip rules) lives in one place.
+fn scan_unmanaged_rows() -> (Vec<UnmanagedRow>, std::collections::HashSet<String>) {
     let projects = home().join(".claude").join("projects");
     let managed = managed_session_ids();
     let mut rows: Vec<UnmanagedRow> = Vec::new();
     let dirs = match fs::read_dir(&projects) {
         Ok(d) => d,
-        Err(_) => return Vec::new(),
+        Err(_) => return (rows, managed),
     };
     for d in dirs.flatten() {
         let pdir = d.path();
@@ -447,7 +487,7 @@ pub fn discover_sessions() -> Vec<Value> {
             rows.push((mtime, sid, title, cwd, skip));
         }
     }
-    select_unmanaged(rows, &managed)
+    (rows, managed)
 }
 
 /// Extract a markdown section body: text between "## <heading>\n" and the next "## ".
@@ -1370,6 +1410,38 @@ mod tests {
     };
     use crate::is_valid_session_id;
     use serde_json::json;
+
+    #[test]
+    fn select_unmanaged_page_paginates_and_reports_the_full_total() {
+        use std::collections::HashSet;
+        let mut managed = HashSet::new();
+        managed.insert("managed-1".to_string());
+
+        // 50 candidates (ascending mtime) + one managed + one skipped.
+        let mut rows: Vec<UnmanagedRow> = Vec::new();
+        for i in 0..50u64 {
+            rows.push((i, format!("sid-{i}"), Some(format!("title {i}")), Some("/tmp/x".into()), false));
+        }
+        rows.push((999, "managed-1".to_string(), Some("m".into()), Some("/tmp".into()), false));
+        rows.push((998, "skipme".to_string(), Some("s".into()), Some("/tmp".into()), true));
+
+        // First page: newest first, and `total` counts every survivor — not the page.
+        let p0 = super::select_unmanaged_page(rows.clone(), &managed, 20, 0);
+        assert_eq!(p0["total"], 50);
+        let a = p0["sessions"].as_array().unwrap();
+        assert_eq!(a.len(), 20);
+        assert_eq!(a[0]["sessionId"], "sid-49");
+
+        // Second page continues where the first stopped (no overlap, no gap).
+        let p1 = super::select_unmanaged_page(rows.clone(), &managed, 20, 20);
+        let b = p1["sessions"].as_array().unwrap();
+        assert_eq!(b.len(), 20);
+        assert_eq!(b[0]["sessionId"], "sid-29");
+
+        // Last page is short, and an offset past the end yields an empty page, not an error.
+        assert_eq!(super::select_unmanaged_page(rows.clone(), &managed, 20, 40)["sessions"].as_array().unwrap().len(), 10);
+        assert_eq!(super::select_unmanaged_page(rows, &managed, 20, 999)["sessions"].as_array().unwrap().len(), 0);
+    }
 
     #[test]
     fn select_unmanaged_excludes_managed_skips_and_caps_at_30() {

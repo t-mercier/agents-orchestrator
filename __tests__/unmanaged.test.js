@@ -8,13 +8,34 @@ describe('basename', () => {
   it('handles empty', () => expect(U.basename('')).toBe(''))
 })
 
+describe('suggestName', () => {
+  it('names the session after its first prompt, not its folder', () => {
+    // Regression: a session started in ~/TomTom was adopted as "TomTom" — the folder,
+    // not the work.
+    expect(U.suggestName({ title: 'Fix the checkout bug', cwd: '/Users/x/TomTom' }))
+      .toBe('Fix the checkout bug')
+  })
+  it('keeps the first line and clips long prompts on a word boundary', () => {
+    const long = 'Investigate why the tile cache stalls when the map view is backgrounded for a while'
+    const out = U.suggestName({ title: `${long}\nsecond line`, cwd: '/x' })
+    expect(out.length).toBeLessThanOrEqual(60)
+    expect(out).toBe('Investigate why the tile cache stalls when the map view is')
+    expect(out).not.toContain('second line')
+  })
+  it('falls back to the cwd basename when there is no title', () => {
+    expect(U.suggestName({ title: '', cwd: '/Users/x/my-repo' })).toBe('my-repo')
+    expect(U.suggestName({ title: '   ', cwd: '/Users/x/my-repo' })).toBe('my-repo')
+  })
+})
+
 describe('buildUnmanagedModel', () => {
   it('maps rows with relative time + default name', () => {
     const mtime = Math.floor(new Date('2026-07-22T10:00:00Z').getTime() / 1000) // 2h before NOW
     const m = U.buildUnmanagedModel([{ sessionId: 'a', title: 'Fix bug', cwd: '/Users/x/my-repo', mtime }], NOW)
     expect(m.empty).toBe(false)
     expect(m.rows).toHaveLength(1)
-    expect(m.rows[0]).toMatchObject({ sessionId: 'a', title: 'Fix bug', cwd: '/Users/x/my-repo', defaultName: 'my-repo' })
+    // defaultName is the prompt, not the folder — see the suggestName tests above.
+    expect(m.rows[0]).toMatchObject({ sessionId: 'a', title: 'Fix bug', cwd: '/Users/x/my-repo', defaultName: 'Fix bug' })
     expect(m.rows[0].when).toBe('2h ago')
   })
   it('falls back to "(untitled session)" and empty defaultName', () => {

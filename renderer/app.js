@@ -229,10 +229,14 @@ window.queryMatches = (text) => matchesSearch({ name: text || '' }, searchQuery)
 function renderCategoryFilters() {
   const n = activeCatFilters.size + activeSpaceFilters.size
   const btn = `<button class="filter-btn ${n ? 'active' : ''}" data-filter-open aria-label="Filter" title="Filter by space or category">⚲ <span class="btn-label">Filter</span>${n ? ` <span class="filter-count">${n}</span>` : ''}</button>`
-  for (const id of ['cat-filter-list', 'cat-filter-board']) {
-    const el = document.getElementById(id)
-    if (el) el.innerHTML = btn
-  }
+  // ＋Import sits on the left of the list's filter row: the entry point for adopting a
+  // session by id, or browsing every session the dashboard isn't tracking (the inline
+  // "Recent · unmanaged" section only shows the newest few). Board keeps the filter alone.
+  const importBtn = `<button class="import-btn" data-import-open title="Adopt a session by ID, or browse every untracked session">＋ <span class="btn-label">Import</span></button>`
+  const listEl = document.getElementById('cat-filter-list')
+  if (listEl) listEl.innerHTML = importBtn + btn
+  const boardEl = document.getElementById('cat-filter-board')
+  if (boardEl) boardEl.innerHTML = btn
 }
 
 function closeFilterMenu() {
@@ -560,7 +564,11 @@ document.body.addEventListener('click', (e) => {
   // Adopt a row (open the Import modal preselected with that session).
   const adopt = e.target.closest('[data-adopt-sid]')
   if (!adopt) return
-  openImportModal({ preselectSessionId: adopt.dataset.adoptSid, defaultName: adopt.dataset.adoptName || '' })
+  openImportModal({
+    preselectSessionId: adopt.dataset.adoptSid,
+    defaultName: adopt.dataset.adoptName || '',
+    targetLabel: adopt.dataset.adoptTitle || adopt.dataset.adoptName || '',
+  })
 })
 
 document.body.addEventListener('click', (e) => {
@@ -822,30 +830,82 @@ function renderImportList(query) {
     </button>`
   }).join('')
 }
+// How many sessions one "page" of the browse list holds, and where we are in it.
+const IMPORT_PAGE = 20
+let importOffset = 0
+let importTotal = 0
+
+// Two modes:
+//  • Adopt on a row  → the session is already chosen. No picker, no id field: the modal
+//    only asks where it should land. Showing a list there would invite adopting a
+//    DIFFERENT session than the one clicked.
+//  • ＋Import        → nothing chosen yet: search + page through every untracked session,
+//    or paste an id for one that isn't listed.
 async function openImportModal(opts) {
   const preselectSessionId = opts && opts.preselectSessionId
   const defaultName = (opts && opts.defaultName) || ''
+  const single = !!preselectSessionId
   importSelectedSid = preselectSessionId || null
   importSessions = []
-  document.getElementById('import-search').value = ''
+  importOffset = 0
+  importTotal = 0
   document.getElementById('import-uid').value = ''
+  document.getElementById('import-search').value = ''
   document.getElementById('import-name').value = defaultName
   hideImportError()
   populateImportCategories()
   // Render the Embedded/Terminal destination toggle reflecting the current pref (like +New).
   const destEl = document.getElementById('import-dest')
   if (destEl && window.destinationToggle) destEl.innerHTML = window.destinationToggle()
-  const goBtn = document.getElementById('import-go')
-  goBtn.disabled = !importSelectedSid
-  document.getElementById('import-list').innerHTML = '<div class="import-empty">Loading…</div>'
+
+  const browse = document.getElementById('import-browse')
+  const target = document.getElementById('import-target')
+  const title = document.getElementById('import-title')
+  const hint = document.getElementById('import-hint')
+  if (browse) browse.hidden = single
+  if (target) {
+    target.hidden = !single
+    if (single) {
+      const label = (opts && opts.targetLabel) || defaultName || preselectSessionId
+      target.innerHTML = `<span class="import-target-label">Adopting</span> <span class="import-target-name">${importEsc(label)}</span>`
+    }
+  }
+  if (title) title.textContent = single ? 'Adopt this session' : 'Import a session'
+  if (hint) {
+    hint.textContent = single
+      ? "It resumes and gets a notes.md, so it shows up like any managed session. Choose where it lands."
+      : "Adopt a session the dashboard isn't tracking yet. Search the list, or paste an id."
+  }
+
+  document.getElementById('import-go').disabled = !importSelectedSid
   importModal.showModal()
-  try { importSessions = await window.api.discoverSessions() } catch (_) { importSessions = [] }
-  renderImportList('')
+  if (!single) {
+    document.getElementById('import-list').innerHTML = '<div class="import-empty">Loading…</div>'
+    await loadImportPage(true)
+  }
   updateImportGo()
 }
-// The Import modal is now reached only via a session's Adopt button (opened
-// preselected). The old top-level ＋Import entry point was removed — the
-// Recent·unmanaged section surfaces adoptable sessions inline instead.
+
+// Fetch one page of untracked sessions, appending unless `reset`. `total` comes back with
+// the page so "Load more" only shows while there is genuinely more to fetch.
+async function loadImportPage(reset) {
+  if (reset) { importSessions = []; importOffset = 0 }
+  try {
+    const res = await window.api.discoverSessionsPage(IMPORT_PAGE, importOffset)
+    const page = (res && res.sessions) || []
+    importTotal = (res && res.total) || 0
+    importSessions = importSessions.concat(page)
+    importOffset += page.length
+  } catch (_) { /* keep what we have */ }
+  renderImportList(document.getElementById('import-search').value || '')
+  const more = document.getElementById('import-more')
+  if (more) more.hidden = importSessions.length >= importTotal
+}
+
+document.body.addEventListener('click', (e) => {
+  if (e.target.closest('[data-import-open]')) openImportModal()
+})
+document.getElementById('import-more').addEventListener('click', () => loadImportPage(false))
 document.getElementById('import-cancel').addEventListener('click', () => importModal.close())
 // Escape closes the modal. The search field is type=search, which natively eats
 // Escape (to clear itself) before the dialog's own cancel — so close it explicitly.
