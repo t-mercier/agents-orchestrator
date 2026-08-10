@@ -113,7 +113,21 @@ fn reveal_in(app_name: &str, tty: &str, select: bool) -> bool {
                 -- does NOT bring its window forward, so `activate` showed whatever
                 -- window was current (wrong one). `select w` raises the right
                 -- window; then select the tab + the (possibly split-pane) session.
-                select w
+                --
+                -- A HOTKEY window is not an ordinary window: it is hidden by iTerm's
+                -- hotkey mechanism, and `select w` + `activate` select the tab without
+                -- ever un-hiding it (the user sees nothing happen). Those windows only
+                -- come back via `reveal hotkey window`. Wrapped in `try` so an older
+                -- iTerm lacking the `is hotkey window` property falls back to `select w`
+                -- instead of erroring out the whole script.
+                set didReveal to false
+                try
+                  if (is hotkey window of w) then
+                    tell w to reveal hotkey window
+                    set didReveal to true
+                  end if
+                end try
+                if not didReveal then select w
                 tell t to select
                 tell s to select
                 activate
