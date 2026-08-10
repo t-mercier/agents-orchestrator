@@ -94,7 +94,7 @@ Terminal tabs don't scale. You need mission control.
 - **Looks & density** — curated colour "looks" (accent + a subtle surface ambiance), a custom accent, and Detailed / Compact / Minimal card density. Dark & light themes.
 - **Lifecycle tabs** — Running · Closed · Archived, with live **search** and a **⚲ Filter** popover (category checkboxes, one control across every view).
 - **Spaces** — group categories under multiple named spaces (e.g. *Work*, *Perso*, a client). The **List** organises into collapsible **space sections** → category groups; the **Board** gets its own space filter next to its search. Pinned and ⚡ waiting cards float above every space section — they're your shortlist, so they stay at the top of the column. A single space configured ⇒ no space chrome at all.
-- **Knowledge that outlives a session** — closing a session distils its high-signal decisions into a folder of **knowledge notes** (per space), so what cost you an afternoon is still there months later, in plain Markdown a fresh session can be pointed at. A folder you choose; **Obsidian is one way to browse it, not a requirement**.
+- **Knowledge that outlives a session** — closing a session distils its high-signal decisions into a folder of **knowledge notes** (per space), so what cost you an afternoon is still there months later — and `/route <ticket>` reads it back, with your past sessions and your tracker, *before* you open the code. A folder you choose; **Obsidian is one way to browse it, not a requirement**.
 - **Backup** — export / import all your settings to a file (handy before a reinstall).
 
 ### Two ways to look at your work
@@ -186,6 +186,7 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/skill-propose` | Stage what this session taught as a new skill — or a patch to an existing one — in `~/.claude/skills-pending/`. Never writes to `skills/` |
 | `/skills-review` | The approval gate: list, diff, then approve or reject a staged proposal. The only path by which one goes live |
 | `/skills-curate` | Periodic pass over the whole set: refresh usage, report `active`/`stale`/`archived`, stage merges of overlapping skills |
+| `/route <ticket \| topic>` | A **Context Brief before you investigate**: this space's knowledge notes + past session notes + your tracker, summarised. Read-only |
 
 Categories, note locations and knowledge-notes folders all come from your shared config, so the skills and the app stay in sync.
 
@@ -204,7 +205,7 @@ Categories, note locations and knowledge-notes folders all come from your shared
 
 Long sessions force the assistant to **compact** its own history — silently dropping older context until it loses the thread. This app keeps what matters in `notes.md` on disk instead: `/close-session` records the goal, decisions and next steps **plus the session id**; `/restart-session` loads all of it — and that id — into a fresh conversation, so the chain back to the original is never broken. Need the literal transcript? `claude --resume <id>` replays it verbatim.
 
-**And a second tier, across sessions.** A `notes.md` remembers *one* session; the decision that cost you an afternoon deserves to outlive it. Give a space a knowledge-notes folder and `/close-session` distils the high-signal decisions into it as atomic notes — marking the source bullet so the same one is never promoted twice. The notes are plain files, so a fresh session can be pointed at them rather than re-deriving the same conclusion from the code. A dedicated Context-Brief command — read the space's notes, the past sessions and the tracker *before* investigating — exists in the author's own toolbox and is on the roadmap to be bundled; it is not shipped yet.
+**And a second tier, across sessions.** A `notes.md` remembers *one* session; the decision that cost you an afternoon deserves to outlive it. Give a space a knowledge-notes folder and `/close-session` distils the high-signal decisions into it as atomic notes — marking the source bullet so the same one is never promoted twice. `/route <ticket | topic>` then reads that folder, your past session notes and — when a tracker is reachable — its tickets, to build a **Context Brief before you open the code**. It resolves *which* folder from the current session's space, so work and personal knowledge never bleed into each other.
 
 ```mermaid
 flowchart LR
@@ -337,7 +338,6 @@ Leave it blank and ticket IDs simply show as a (non-clickable) tag. *(The legacy
 - [ ] Standalone terminal tab — use the in-app terminal for ad-hoc commands, not just resuming a session
 - [ ] Signed + notarized `.dmg` releases
 - [ ] Homebrew cask · auto-update
-- [ ] **`/route` — a Context Brief before you investigate**: read the space's knowledge notes + past session notes + the tracker, and summarise what is already known. Works today in the author's setup (space-aware, no hardcoded paths); bundling it needs an English rewrite and a tracker-agnostic step.
 - [ ] Richer knowledge-notes integration (auto-distil, backlink graph)
 
 ## Changelog
