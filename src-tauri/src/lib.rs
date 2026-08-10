@@ -78,8 +78,13 @@ pub(crate) fn statusline_settings_arg() -> String {
 /// leading `-`; `--` terminates `open`'s option parsing (defense-in-depth).
 #[tauri::command]
 fn open_external(url: String) -> Result<(), String> {
-    if !(url.starts_with("http://") || url.starts_with("https://")) {
-        return Err("only http(s) URLs are allowed".into());
+    // http(s) opens in the browser; file:// is the same capability open_path already
+    // grants (hand it to the OS opener), and terminals print those constantly. Every
+    // other scheme stays rejected — notably javascript:/data:, which must never reach
+    // the OS opener.
+    let allowed = url.starts_with("http://") || url.starts_with("https://") || url.starts_with("file://");
+    if !allowed {
+        return Err(format!("unsupported URL scheme: {url}"));
     }
     std::process::Command::new(OPEN_CMD)
         .arg("--")

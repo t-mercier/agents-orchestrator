@@ -111,7 +111,10 @@ function ensureTerminal(sessionId, restartSlug = '', command = '') {
   const fitAddon = new FitAddon()
   // Route terminal link clicks to the system default browser (not an Electron window)
   const webLinksAddon = new WebLinksAddon((event, uri) => {
-    window.api.openExternal(uri)
+    // Surface a refused open (unsupported scheme) instead of the click doing nothing.
+    window.api.openExternal(uri).then(res => {
+      if (res && !res.ok) console.warn(`could not open ${uri}: ${res.error}`)
+    })
   })
   term.loadAddon(fitAddon)
   term.loadAddon(webLinksAddon)

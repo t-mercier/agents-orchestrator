@@ -22,7 +22,12 @@
     getHistoricalAll: () => invoke('get_historical_sessions_all'),
     // Unmanaged transcripts (no notes.md) for the "Import a session" picker.
     discoverSessions: () => invoke('discover_sessions'),
-    openExternal: (url) => invoke('open_external', { url }),
+    // Never let a rejected open (unsupported scheme) become an unhandled promise
+    // rejection — that made a link click look like it did nothing at all.
+    openExternal: (url) =>
+      invoke('open_external', { url })
+        .then(() => ({ ok: true }))
+        .catch((e) => ({ ok: false, error: String(e) })),
     openPath: (p) => invoke('open_path', { path: p }),
     openInTerminal: (cwd, sessionId) => invoke('open_in_terminal', { cwd: cwd || '', sessionId }),
     // Reveal an already-open session window: canReveal gates whether we offer the button.
