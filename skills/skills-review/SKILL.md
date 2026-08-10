@@ -74,18 +74,11 @@ plainly and suggest checking that the gate is on:
 all of it. Flag anything that deserves a second look: shell commands with side effects,
 absolute paths, anything resembling a credential.
 
-**A patch** → show a *real* diff, not the proposal's prose. Apply it to a scratch copy and
-diff against the live skill, so what is displayed is exactly what approval would do:
+**A patch** → show a *real* diff, not the proposal's prose. One command does the parse,
+the anchor check and the diff, so what is displayed is exactly what approval would write:
 
 ```bash
-TARGET=$(grep -m1 '^target:' ~/.claude/skills-pending/<name>.patch.md | sed 's/target: //')
-SRC=~/.claude/skills/$TARGET/SKILL.md
-TMP=$(mktemp)
-cp "$SRC" "$TMP"
-# apply each old_string → new_string from the proposal to $TMP (Edit tool on $TMP),
-# then:
-diff -u "$SRC" "$TMP" | sed 's|'"$TMP"'|proposed|'
-rm -f "$TMP"
+python3 ~/.claude/skills/lib/patch_apply.py diff ~/.claude/skills-pending/<name>.patch.md
 ```
 
 If an `old_string` no longer matches (the target changed since the proposal), STOP and
@@ -126,9 +119,16 @@ Two checks first, and refuse if either fails:
 - **The `## Dependency check` section says something is referencing it** → do not archive.
   Fix the reference first, or keep the skill.
 
-**Patch:** apply the replacements to the live `SKILL.md` with the Edit tool (each
-`old_string` must still match uniquely), bump the target's `version:` patch number if it
-has one, then delete the proposal file. If the target has no `origin:` field (a
+**Patch:** apply it with the tool, never by hand — it re-checks the anchors at write time
+and writes atomically:
+
+```bash
+python3 ~/.claude/skills/lib/patch_apply.py apply ~/.claude/skills-pending/<name>.patch.md
+rm -f ~/.claude/skills-pending/<name>.patch.md
+```
+
+Then bump the target's `version:` patch number if it has one (some hand-written skills
+carry no frontmatter at all — leave those alone). If the target has no `origin:` field (a
 hand-written skill), leave it absent — do not relabel the user's own work as
 agent-proposed; note in the report that a hand-written skill was patched.
 

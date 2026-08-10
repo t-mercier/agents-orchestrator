@@ -143,9 +143,12 @@ Rules for the content:
 ## Step 3b — Draft a PATCH proposal
 
 Write `~/.claude/skills-pending/<target-slug>.patch.md` — a document, not an applied
-change:
+change. **Wrap `old_string` / `new_string` in at least FIVE backticks**, never three:
+the replacement almost always contains its own ```` ``` ```` blocks, and a three-backtick
+wrapper ends at the first inner closing fence — silently truncating the replacement and
+writing a broken skill. `lib/patch_apply.py` refuses a three-backtick wrapper outright.
 
-```markdown
+````markdown
 ---
 target: <existing skill slug>
 origin: agent-proposed
@@ -159,22 +162,28 @@ kind: patch
 
 ## Change 1
 `old_string:`
-```
+`````
 <exact text from the target SKILL.md — must match uniquely, verbatim>
-```
+`````
 `new_string:`
-```
-<replacement>
-```
-```
+`````
+<replacement, which may freely contain ``` fenced blocks>
+`````
+````
 
 Keep patches **minimal and targeted** — one or two focused replacements. A full rewrite
 is not a patch: if the skill needs rewriting, say so in `## Why` and let the user decide.
-Verify each `old_string` appears **exactly once** in the target before writing the file:
+
+Then **verify the proposal mechanically** before you report it — do not eyeball the
+anchors:
 
 ```bash
-grep -c '<old_string first line>' ~/.claude/skills/<target-slug>/SKILL.md
+python3 ~/.claude/skills/lib/patch_apply.py check ~/.claude/skills-pending/<slug>.patch.md
 ```
+
+It parses the blocks, resolves the target and requires every `old_string` to match
+**exactly once**. If it prints `REFUSED`, fix the proposal — never hand a proposal to the
+user that its own applier rejects.
 
 ## Step 4 — Report
 
