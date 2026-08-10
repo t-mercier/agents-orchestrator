@@ -10,6 +10,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **`/route` — a Context Brief before you investigate** — reads this space's knowledge notes, your past session notes and (when a tracker is reachable) its tickets, and summarises what is already known *before* you open the code. It resolves which notes folder to read from the current session's **space**, so nothing is hardcoded and work and personal knowledge never mix; an unmanaged terminal reads them all and says so. Layout is discovered rather than assumed — a `20-Notes/` · `10-Areas/` vault is used as such, any other folder is scanned flat — so it works for someone who just pointed a space at a notes directory. The search itself lives in `skills/lib/route_search.py` (14 selftests) rather than inline in the skill: the version this was ported from passed its query and its vault path through environment variables that nothing ever exported, so every search silently scored zero and the skill reported "no match" for its entire life. Arguments cannot be forgotten the way an export can.
+
 ### Documentation
 - **The knowledge-notes tier is now advertised** — the README and the landing page told the per-session story (a `notes.md` that survives compaction) and stopped there; the tier that survives *across* sessions was documented nowhere, so no visitor could know it existed. Both now carry it, with the honest boundary drawn: distilling on close ships, and a dedicated Context-Brief command to read it back is named on the roadmap rather than implied.
 
