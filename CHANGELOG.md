@@ -10,6 +10,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **A repo pull no longer half-delivers a skill update** — the installer keeps an existing skill untouched without `--force`, so pulling a version that *changes* `/close-session` or `/save-session` left them on the old copy while the new skills and libs arrived. `scripts/install.sh` now diffs each skipped skill against the bundle and ends with an explicit warning naming the ones whose updates did not arrive (an identical copy stays silent). `/skills-review` makes the same failure self-diagnosing: when the learning loop is enabled but the installed session skills carry no proposal step, it says so instead of reporting "nothing pending" — the two look identical and mean opposite things. The installer's closing skill list is now derived from the directory rather than hand-maintained, which had already gone stale.
+
 ## [0.5.0-alpha] - 2026-08-10
 
 ### Added

@@ -25,12 +25,16 @@ cp "$SKILLS_SRC/lib/"*.py "$SKILLS_DST/lib/"
 echo "installed: lib/ (config helper)"
 
 # 2. Skills (don't clobber a user's customised skill without --force)
+STALE=()
 for d in "$SKILLS_SRC"/*/; do
   name="$(basename "$d")"
   [ "$name" = "lib" ] && continue
   dst="$SKILLS_DST/$name"
   if [ -e "$dst" ] && [ "$FORCE" -ne 1 ]; then
     echo "skip (exists): /$name  — use --force to overwrite"
+    # Skipping an IDENTICAL copy is a no-op; skipping a CHANGED one silently leaves the
+    # user on an old version, which is how a shipped fix quietly fails to arrive.
+    diff -rq "$d" "$dst" >/dev/null 2>&1 || STALE+=("$name")
   else
     rm -rf "$dst"; cp -R "$d" "$dst"; echo "installed skill: /$name"
   fi
@@ -72,7 +76,20 @@ python3 "$SKILLS_DST/lib/aoconfig.py" categories | while IFS= read -r cat; do
 done
 
 echo
+if [ ${#STALE[@]} -gt 0 ]; then
+  echo "⚠ ${#STALE[@]} installed skill(s) are OLDER than this version and were kept:"
+  printf '    /%s\n' "${STALE[@]}"
+  echo "  Their updates did NOT arrive. If you have not customised them, re-run:"
+  echo "    bash scripts/install.sh --force"
+  echo
+fi
 echo "✓ Done. Edit categories/colors/paths in the app's Settings (⚙), or in $CONFIG."
 echo "→ Optional: install the Superpowers plugin for git-worktree support:"
 echo "    https://github.com/obra/superpowers"
-echo "Skills available now: /start-session  /close-session  /save-session  /restart-session  /archive-session  /import-session  /rename-category"
+printf 'Skills available now:'
+for d in "$SKILLS_SRC"/*/; do
+  name="$(basename "$d")"
+  [ "$name" = "lib" ] && continue
+  printf '  /%s' "$name"
+done
+echo

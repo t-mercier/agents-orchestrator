@@ -65,8 +65,27 @@ LAST=$(find ~/.claude/skills -mindepth 2 -maxdepth 2 -name SKILL.md -exec grep -
 ```
 
 If nothing has been proposed **or** approved in the last ~3 weeks of active work, say so
-plainly and suggest checking that the gate is on:
-`python3 ~/.claude/skills/lib/aoconfig.py flag skillProposals` should print `on`.
+plainly and run both checks below — a loop that never fires almost always fails at one of
+them, and neither is visible from the outside.
+
+```bash
+# 1. Is the gate on at all?
+python3 ~/.claude/skills/lib/aoconfig.py flag skillProposals    # must print: on
+
+# 2. Do the INSTALLED session skills actually carry the proposal step? An installer run
+#    without --force keeps an existing skill untouched, so a repo pull delivers the new
+#    skills and the libs but leaves close-session/save-session on their old copy — the
+#    flag then reads `on` while nothing can ever fire.
+for s in close-session save-session; do
+  grep -q skillProposals ~/.claude/skills/$s/SKILL.md 2>/dev/null \
+    || echo "MISSING: /$s has no proposal step — its installed copy predates this feature"
+done
+```
+
+If check 2 reports anything, the fix is a force install:
+`bash scripts/install.sh --force`, or **Settings → Session skills → Install / update**.
+Say so explicitly rather than reporting "nothing pending" — the two look identical to the
+user and mean completely different things.
 
 ## Step 2 — Show it
 
