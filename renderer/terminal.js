@@ -107,6 +107,16 @@ function ensureTerminal(sessionId, restartSlug = '', command = '') {
     cursorBlink: true,
     allowTransparency: false,
     scrollback: 5000,
+    // OSC 8 hyperlinks — how Claude Code prints a PR it just opened, and how modern CLIs
+    // emit links generally. These are NOT plain text, so WebLinksAddon's regex never sees
+    // them: without a linkHandler xterm renders them underlined and does nothing on click.
+    linkHandler: {
+      activate: (_event, text) => {
+        window.api.openExternal(text).then(res => {
+          if (res && res.ok === false) console.warn(`could not open ${text}: ${res.error}`)
+        })
+      },
+    },
   })
   const fitAddon = new FitAddon()
   // Route terminal link clicks to the system default browser (not an Electron window)
