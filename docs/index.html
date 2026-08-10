@@ -6,7 +6,7 @@
 <title>AI Agents Orchestrator — mission control for your AI development sessions</title>
 <meta name="description" content="A tiny native dashboard for macOS & Linux that gives you one unified view over a dozen parallel AI coding sessions, across every project. Local-first, zero network, read-only by design." />
 <meta property="og:title" content="AI Agents Orchestrator" />
-<meta property="og:description" content="Mission control for your AI development sessions." />
+<meta property="og:description" content="Every agent you're running, in one window — live status, the work in progress, and a terminal for each. Local-first, zero network." />
 <meta property="og:image" content="media/hero.png" />
 <meta property="og:type" content="website" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -213,6 +213,7 @@
     <div class="nav-links">
       <a href="#features">Features</a>
       <a href="#skills">Skills</a>
+      <a href="#memory">Memory</a>
       <a href="#security">Security</a>
       <a class="nav-cta" href="https://github.com/t-mercier/ai-agents-orchestrator">View on GitHub</a>
     </div>
@@ -222,10 +223,10 @@
 <header>
   <div class="wrap">
     <span class="pill"><span class="dot"></span> Local-first · macOS & Linux · source-available</span>
-    <h1>Mission control for your <span class="grad">AI development</span> sessions</h1>
-    <p class="vs">AI coding sessions don't last minutes anymore. They last <strong>days, weeks, sometimes entire projects.</strong></p>
-    <p class="sub">Each one accumulates context, decisions, repositories, tasks and agents. Before long, you're juggling dozens of parallel workstreams.</p>
-    <p class="sub"><strong>AI Agents Orchestrator</strong> gives you a unified view of every session, across every project — so you can stay focused instead of getting lost in the chaos.</p>
+    <h1>Every agent you're running. <span class="grad">One window.</span></h1>
+    <p class="vs">AI coding sessions now run for <strong>days</strong> — and you end up with a dozen terminal windows and no idea which agent is waiting on you.</p>
+    <p class="sub"><strong>AI Agents Orchestrator</strong> puts every session in one place: live status, what each one is working on, and its own terminal — without leaving the app.</p>
+    <p class="sub">Local-first, read-only on your files, zero network. macOS &amp; Linux, ~8 MB.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="https://github.com/t-mercier/ai-agents-orchestrator">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.49l-.01-1.9c-2.78.62-3.37-1.22-3.37-1.22-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .07 1.53 1.06 1.53 1.06.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.28 2.75 1.05A9.3 9.3 0 0 1 12 6.84c.85 0 1.71.12 2.51.34 1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9l-.01 2.82c0 .27.18.6.69.49A10.26 10.26 0 0 0 22 12.25C22 6.58 17.52 2 12 2Z"/></svg>
@@ -284,9 +285,9 @@
 <section id="features">
   <div class="wrap">
     <div class="section-head reveal">
-      <p class="eyebrow">Three ways to look</p>
-      <h2>Whatever shape your day is in</h2>
-      <p class="lead">The same live session data, rendered the way you think — a tidy list, a glanceable grid, or a full kanban cockpit.</p>
+      <p class="eyebrow">Two ways to look</p>
+      <h2>Two views. Pick how you think.</h2>
+      <p class="lead">The same live session data, rendered the way you think — a tidy list, or a full kanban cockpit.</p>
     </div>
 
     <div class="feature">
@@ -409,6 +410,23 @@
   </div>
 </section>
 
+<!-- MEMORY -->
+<section id="memory">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">Memory that outlives the context window</p>
+      <h2>Your sessions forget. Your notes don't.</h2>
+      <p class="lead">Long sessions get <strong>compacted</strong> — older turns are squeezed or silently dropped, and the decision you made on day one goes with them. Every session here keeps a <code>notes.md</code> next to its code: the goal, the decisions, the next steps, and the session id. Pick the work back up weeks later, in a fresh conversation, with the thread intact.</p>
+    </div>
+    <div class="secgrid">
+      <div class="sec reveal"><h4>Written as you go</h4><p><code>/save-session</code> checkpoints the work mid-flight; <code>/close-session</code> wraps it up with a summary.</p></div>
+      <div class="sec reveal"><h4>Reloaded into a fresh chat</h4><p><code>/restart-session</code> briefs a brand-new conversation from the notes — plus every past session id, so the chain back is never broken.</p></div>
+      <div class="sec reveal"><h4>Or replayed verbatim</h4><p>Because the session id is recorded, <code>claude --resume &lt;id&gt;</code> still gives you the original transcript, turn for turn.</p></div>
+      <div class="sec reveal"><h4>A file you own</h4><p>The source of truth is markdown on your disk — not a context window, and not someone's cloud.</p></div>
+    </div>
+  </div>
+</section>
+
 <!-- SECURITY -->
 <section id="security" class="band">
   <div class="wrap">
@@ -431,7 +449,7 @@
   <div class="wrap">
     <div class="box reveal">
       <p class="eyebrow">Get started</p>
-      <h2>Bring order to the chaos</h2>
+      <h2>Get it running in two minutes.</h2>
       <p class="lead" style="margin:16px auto 0;">Clone it, run it, and watch your sessions line up. Runs on macOS 13+ and Linux (X11/Wayland) — needs Rust + the Tauri CLI and Claude Code.</p>
       <p class="lead" style="margin:10px auto 0;font-size:15px;color:var(--faint);">Works with Claude Code today — <strong style="color:var(--muted);font-weight:600;">GitHub Copilot and other agent CLIs are next on the roadmap.</strong></p>
       <div class="install"><span class="p">$</span> git clone https://github.com/t-mercier/ai-agents-orchestrator &amp;&amp; cd ai-agents-orchestrator &amp;&amp; cargo tauri dev</div>

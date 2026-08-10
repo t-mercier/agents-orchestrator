@@ -4,7 +4,7 @@
 
 # AI Agents Orchestrator
 
-**Mission control for your AI development sessions — a tiny native dashboard (macOS & Linux) that brings order to the chaos.**
+**Every AI coding session you're running, in one window — a tiny native dashboard for macOS & Linux.**
 
 [![Live site](https://img.shields.io/badge/%F0%9F%8C%90%20Live%20site-visit-9b8cff?style=for-the-badge)](https://t-mercier.github.io/ai-agents-orchestrator/)
 
@@ -18,9 +18,9 @@
 </div>
 
 
-> AI coding sessions don't last minutes anymore. They last **days, weeks, sometimes entire projects** — each accumulating context, decisions, repositories, tasks and agents. Before long, you're juggling dozens of parallel workstreams.
+> AI coding sessions now run for **days, sometimes entire projects** — each with its own context, decisions, repos and agents. Run a few in parallel and you're hunting through a dozen terminal windows to find the one that needs you.
 >
-> **AI Agents Orchestrator gives you a unified view of every session, across every project** — so you can stay focused instead of getting lost in the chaos.
+> **AI Agents Orchestrator puts every session in one window** — live status, the work in progress, and a terminal for each. Local-first, read-only, zero network.
 
 ## TL;DR — how you're meant to use it
 
