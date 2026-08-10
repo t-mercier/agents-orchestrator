@@ -34,7 +34,27 @@ The one thing worth getting straight:
 
 > Rule of thumb: **Resume** = same conversation · **Restart** = same project, fresh conversation, history still linked · **Start** = new project.
 
-Each can open **in the app's embedded terminal** or **in your own terminal** — your choice, with the toggle next to the button.
+Each can open **in the app's embedded terminal** or **in your own terminal**, with the toggle next to the button.
+
+**Prefer the embedded one.** The whole point of the app is to stop juggling a dozen
+terminal windows: every session gets its own terminal *inside* the app, and switching
+sessions is a click. Opening in your own terminal still works — but you're back to
+hunting for the right window, which is the problem this replaces.
+
+## Adopting a session you started outside the app
+
+Sessions you started yourself (plain `claude` in a shell) aren't managed: they have no
+`notes.md`, so the app can't track them. The **Recent · unmanaged** section at the top of
+Running lists the recent ones; **Adopt** relaunches such a session *and* creates its
+`notes.md` + registers it. It's a one-time step — afterwards it behaves like any other
+session, so you just Resume it.
+
+## One session, one process
+
+Resuming a session doesn't attach to a running one: `claude --resume` starts a **second
+process** on the same conversation, and from there the two diverge. If the app warns you
+that a session is already running, take **Reveal window** to jump to the existing one
+rather than *Open anyway* — the warning exists precisely to stop you forking your own work.
 
 ## Why this matters: notes that beat "compaction"
 

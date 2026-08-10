@@ -22,9 +22,37 @@
 >
 > **AI Agents Orchestrator gives you a unified view of every session, across every project** — so you can stay focused instead of getting lost in the chaos.
 
+## TL;DR — how you're meant to use it
+
+**Run your sessions inside the app.** Each one gets its own embedded terminal, so switching
+between a dozen of them is a click instead of a hunt through terminal windows — that's the
+whole point. Opening in your own terminal is supported, but it puts the juggling back.
+
+**The lifecycle, in one line:**
+
+```
+＋ New  →  Running  →  (terminal gone → still Running, "stale")  →  Closed  →  Archived
+```
+
+Nothing moves on its own — you close, you archive.
+
+| Action | What it does |
+|---|---|
+| **＋ New** | Creates the workspace + its `notes.md`, registers the session, launches it. **Start here** — you never need the terminal first. |
+| **Resume** | Relaunches a session the app already manages. |
+| **Adopt** | For a session you started outside the app (listed under *Recent · unmanaged*): relaunches it **and** creates its `notes.md` + registers it. One-time; after that it's just Resume. |
+| **End session ✕** | Wraps it up with a summary → Closed. |
+
+Two things that save pain: a session's **`notes.md` is its memory** (it survives compaction —
+`/save-session` checkpoints it, `/close-session` wraps it up), and **one session = one process**
+(resuming one that's already running forks the conversation, so take *Reveal window* when the
+app warns you).
+
+Full tour: **[the guide](docs/GUIDE.md)**.
+
 ## Contents
 
-[What's new](#whats-new) · [The problem](#the-problem) · [Features](#features) · [How it works](#how-it-works) · [Quick start](#quick-start) · [Session skills](#session-skills) · [Customization](#customization) · [FAQ](#faq) · [Security](#security) · [Tech stack](#tech-stack) · [Roadmap](#roadmap) · [Changelog](#changelog) · [Contributing](#contributing) · [License](#license)
+[TL;DR](#tldr--how-youre-meant-to-use-it) · [What's new](#whats-new) · [The problem](#the-problem) · [Features](#features) · [How it works](#how-it-works) · [Quick start](#quick-start) · [Session skills](#session-skills) · [Customization](#customization) · [FAQ](#faq) · [Security](#security) · [Tech stack](#tech-stack) · [Roadmap](#roadmap) · [Changelog](#changelog) · [Contributing](#contributing) · [License](#license)
 
 
 > [!NOTE]
