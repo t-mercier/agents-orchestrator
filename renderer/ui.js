@@ -89,15 +89,30 @@ function detailSection(label, body) {
 // The session's meta rows (working dir / branch / worktree / category / dates).
 // Shared by the detail info-pane and the info popover (shown over the embedded
 // terminal), so both stay in sync — single source of truth for "the card info".
+// A meta-row value listing references (tickets, PR urls). Each opens externally when we
+// can build a URL for it; without one (no tracker configured) it stays plain text rather
+// than a dead link.
+function refLinks(values, hrefOf, labelOf = (v) => v) {
+  return values.map(v => {
+    const href = hrefOf(v)
+    const label = escapeHtml(labelOf(v))
+    return href
+      ? `<button class="ref-link" data-url="${escapeHtml(href)}" title="${escapeHtml(v)}">${label}</button>`
+      : `<span class="ref-plain" title="${escapeHtml(v)}">${label}</span>`
+  }).join('<span class="ref-sep">·</span>')
+}
+
 function buildMetaRows(s, isHistorical) {
   const lastUpdate = formatDateTime(s.updatedAt || s.lastActivityAt)
   return [
     !isHistorical && s.cwd ? metaRow('Working directory', pathLink(s.cwd)) : '',
     (s.gitBranch || s.branch) ? metaRow('Branch', `🌿 ${escapeHtml(s.gitBranch || s.branch)}`) : '',
     !isHistorical && s.worktree ? metaRow('Worktree', pathLink(s.worktree, '🗂 ')) : '',
-    // Every ticket, not just the primary — the meta row is where a session's full
-    // reference list is spelled out (the card only has room for "FEAT-1 +1").
-    s.category ? metaRow('Category', `${escapeHtml(s.category)}${ticketsOf(s).length ? ` · ${escapeHtml(ticketsOf(s).join(' · '))}` : ''}`) : '',
+    s.category ? metaRow('Category', escapeHtml(s.category)) : '',
+    // Tickets and PRs get their own rows: this is where a session's full reference list
+    // is spelled out (a card only has room for "FEAT-1 +1"), and where you click through.
+    ticketsOf(s).length ? metaRow(ticketsOf(s).length > 1 ? 'Tickets' : 'Ticket', refLinks(ticketsOf(s), ticketUrl)) : '',
+    prLinksOf(s).length ? metaRow(prLinksOf(s).length > 1 ? 'PRs' : 'PR', refLinks(prLinksOf(s), (u) => u, prLabel)) : '',
     s.root ? metaRow('Space', escapeHtml(String(s.root))) : '',
     isHistorical && s.startedAt ? metaRow('Started', escapeHtml(s.startedAt)) : '',
     lastUpdate ? metaRow('Last update', escapeHtml(lastUpdate)) : '',
@@ -642,37 +657,6 @@ function prPill(s) {
   return `<button class="act pill multi" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull requests" data-tip="${prs.length} PRs · pick one">${ICON_GITHUB}<span class="multi-count">${prs.length}</span></button>`
 }
 
-// The ticket control in the detail toolbar — the tracker-side twin of prControl.
-// Editable on any session with a notes.md (a task can grow a sub-task); the plain
-// pill only when there's nothing to write to.
-function ticketControl(s) {
-  if (!s.notesPath) return ticketPill(s)
-  const notes = escapeHtml(s.notesPath)
-  const editIcon = svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
-  if (ticketsOf(s).length) {
-    // ticketPill is empty when no tracker base URL is configured — then the ids are
-    // only shown in the meta row, but they must still be editable.
-    return (ticketPill(s) || `<span class="act pr-add" title="${escapeHtml(ticketsOf(s).join(' · '))}">${ICON_TICKET}</span>`) +
-      `<button class="act" data-ticket-edit="${notes}" aria-label="Edit tickets" data-tip="Edit tickets">${editIcon}</button>`
-  }
-  return `<button class="act pr-add" data-ticket-edit="${notes}" aria-label="Add ticket" data-tip="Attach a ticket">${ICON_TICKET}</button>`
-}
-
-// The PR control in the detail toolbar. Any session with a writable notes.md can
-// attach PRs (a FEAT task routinely spans two of them — it isn't a REVIEW-only
-// concern): the link/picker plus a ✎ to edit, or a dimmed ＋ when none is set yet.
-// Sessions with no notes.md (unmanaged) get the plain link only — nothing to write to.
-function prControl(s) {
-  if (!s.notesPath) return prPill(s)
-  const notes = escapeHtml(s.notesPath)
-  const editIcon = svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')
-  if (prLinksOf(s).length) {
-    return prPill(s) +
-      `<button class="act" data-pr-edit="${notes}" aria-label="Edit PR links" data-tip="Edit PR links">${editIcon}</button>`
-  }
-  // No link yet → a dimmed GitHub icon that opens the editor to attach one.
-  return `<button class="act pr-add" data-pr-edit="${notes}" aria-label="Add PR link" data-tip="Attach a PR">${ICON_GITHUB}</button>`
-}
 
 // A session can only be resumed if it has a real session id (UUID-ish, no spaces).
 // Placeholders like "to fill" or null mean there's no Claude session to attach to.
@@ -786,7 +770,7 @@ function openLinkMenu(anchor, menu) {
   if (edit) {
     edit.addEventListener('click', () => {
       closeLinkMenu()
-      openLinkEditor(anchor, menu.kind, menu.notesPath)
+      openEditRefs(menu.notesPath)
     })
   }
   setTimeout(() => {
@@ -801,85 +785,72 @@ function openLinkMenu(anchor, menu) {
 // line" the whole interaction, and reordering (the first line is the primary shown on
 // the card) is just editing text. Empty box = clear them all. Reuses the outside-click /
 // Esc dismiss pattern.
-function closePrEditor() {
-  const m = document.getElementById('pr-editor')
-  if (m) m.remove()
-  document.removeEventListener('click', prEditorOutside, true)
-  document.removeEventListener('keydown', prEditorEsc, true)
-}
-function prEditorOutside(e) {
-  if (!e.target.closest('#pr-editor') && !e.target.closest('[data-pr-edit]')
-      && !e.target.closest('[data-ticket-edit]')) closePrEditor()
-}
-function prEditorEsc(e) { if (e.key === 'Escape') closePrEditor() }
-
-// The per-kind bits: heading, placeholder, per-line validation, and the write call.
+// Editing a session's references. One dialog for every editable field, opened by the
+// single ✎ in the detail toolbar — previously each field had its own ✎ + popover, which
+// turned that row into a wall of buttons. Values are one per line; the first is the
+// primary shown on the card, and an empty box clears the field.
 const LINK_EDITORS = {
   pr: {
-    head: 'Pull requests',
-    hint: 'One PR URL per line — the first is the one shown on the card.',
-    placeholder: 'https://github.com/owner/repo/pull/123',
-    invalid: (v) => (typeof isPrUrl === 'function' && !isPrUrl(v))
-      ? `Not a GitHub PR URL: ${v}` : '',
+    invalid: (v) => (typeof isPrUrl === 'function' && !isPrUrl(v)) ? `Not a GitHub PR URL: ${v}` : '',
     save: (notesPath, values) => window.api.setPrLinks(notesPath, values),
     current: (s) => prLinksOf(s),
   },
   ticket: {
-    head: 'Tickets',
-    hint: 'One ticket id per line — the first is the one shown on the card.',
-    placeholder: 'FEAT-1842',
     invalid: (v) => /^[A-Za-z][A-Za-z0-9]*-[0-9]+$/.test(v) ? '' : `Not a ticket id: ${v}`,
     save: (notesPath, values) => window.api.setTickets(notesPath, values),
     current: (s) => ticketsOf(s),
   },
 }
 
-function openLinkEditor(anchor, kind, notesPath) {
-  closePrEditor()
-  const spec = LINK_EDITORS[kind] || LINK_EDITORS.pr
-  // Current values come from the selected session (or the one the terminal shows) —
-  // same resolution the info popover uses.
-  let sel = (window._lastSessions || []).find(x => sessionKey(x) === window._lastSelectedKey)
-  if (!sel || (sel.notesPath || '') !== notesPath) {
-    sel = (window._lastSessions || []).find(x => (x.notesPath || '') === notesPath) || sel
-  }
-  const values = sel ? spec.current(sel) : []
-  const pop = document.createElement('div')
-  pop.className = 'pr-editor'
-  pop.id = 'pr-editor'
-  pop.innerHTML =
-    `<div class="pr-editor-head">${escapeHtml(spec.head)}</div>` +
-    `<div class="pr-editor-hint">${escapeHtml(spec.hint)}</div>` +
-    `<textarea class="pr-editor-input" rows="3" spellcheck="false" autocomplete="off"
-       placeholder="${escapeHtml(spec.placeholder)}">${escapeHtml(values.join('\n'))}</textarea>` +
-    `<div class="pr-editor-err" hidden></div>` +
-    `<div class="pr-editor-actions">${values.length ? `<button class="pr-editor-btn pr-editor-remove">Remove all</button>` : ''}<button class="pr-editor-btn pr-editor-save">Save</button></div>`
-  document.body.appendChild(pop)
-  positionPopover(pop, anchor)
-  const input = pop.querySelector('.pr-editor-input')
-  const err = pop.querySelector('.pr-editor-err')
-  input.focus(); input.select()
-  const save = async (raw) => {
-    const parsed = raw.split('\n').map(l => l.trim()).filter(Boolean)
-    const bad = parsed.map(spec.invalid).find(Boolean)
-    if (bad) { err.textContent = bad; err.hidden = false; return }
-    const res = await spec.save(notesPath, parsed)
-    if (!res || !res.ok) { err.textContent = (res && res.error) || 'Could not save.'; err.hidden = false; return }
-    closePrEditor()
-    if (window.refreshSessions) window.refreshSessions()
-  }
-  pop.querySelector('.pr-editor-save').addEventListener('click', () => save(input.value))
-  const rm = pop.querySelector('.pr-editor-remove')
-  if (rm) rm.addEventListener('click', () => save(''))
-  // Enter saves, Shift+Enter adds a line (the textarea's normal newline).
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(input.value) }
-  })
-  setTimeout(() => {
-    document.addEventListener('click', prEditorOutside, true)
-    document.addEventListener('keydown', prEditorEsc, true)
-  }, 0)
+const editRefsModal = () => document.getElementById('edit-refs-modal')
+let editRefsNotes = ''
+
+// Resolve the session being edited from its notes.md — the same path the button carries.
+function sessionForNotes(notesPath) {
+  const pool = window._lastSessions || []
+  return pool.find(x => (x.notesPath || '') === notesPath) || null
 }
+
+function openEditRefs(notesPath) {
+  const dlg = editRefsModal()
+  if (!dlg) return
+  editRefsNotes = notesPath
+  const s = sessionForNotes(notesPath) || {}
+  document.getElementById('edit-tickets').value = LINK_EDITORS.ticket.current(s).join('\n')
+  document.getElementById('edit-prs').value = LINK_EDITORS.pr.current(s).join('\n')
+  const err = document.getElementById('edit-refs-error')
+  if (err) err.hidden = true
+  dlg.showModal()
+}
+
+// Split a textarea into trimmed, non-empty lines.
+const editRefsLines = (v) => String(v || '').split('\n').map(x => x.trim()).filter(Boolean)
+
+async function saveEditRefs() {
+  const err = document.getElementById('edit-refs-error')
+  const tickets = editRefsLines(document.getElementById('edit-tickets').value)
+  const prs = editRefsLines(document.getElementById('edit-prs').value)
+  // Validate everything before writing anything — a half-applied save would leave the
+  // notes.md disagreeing with what the box showed.
+  const bad = [...tickets.map(v => LINK_EDITORS.ticket.invalid(v)),
+               ...prs.map(v => LINK_EDITORS.pr.invalid(v))].find(Boolean)
+  if (bad) { if (err) { err.textContent = bad; err.hidden = false } return }
+  const results = await Promise.all([
+    LINK_EDITORS.ticket.save(editRefsNotes, tickets),
+    LINK_EDITORS.pr.save(editRefsNotes, prs),
+  ])
+  const failed = results.find(r => r && r.ok === false)
+  if (failed) { if (err) { err.textContent = failed.error || 'Could not save.'; err.hidden = false } return }
+  editRefsModal().close()
+  if (window.refreshSessions) window.refreshSessions()
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const cancel = document.getElementById('edit-refs-cancel')
+  const save = document.getElementById('edit-refs-save')
+  if (cancel) cancel.addEventListener('click', () => editRefsModal().close())
+  if (save) save.addEventListener('click', saveEditRefs)
+})
 
 // Opens a small menu to pick which board column the session goes in (or to remove
 // it). Lives in the detail Actions toolbar; accent-filled when already on the board.
@@ -1006,7 +977,7 @@ function renderDetailPanel(s, tab = 'running') {
   const showBadge = isHistorical || (!!s.status && s.status !== 'idle')
   const termOpen = window.getTerminalVisible && window.getTerminalVisible()
   const headerActions = termOpen
-    ? [infoPill(), ticketControl(s), prControl(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
+    ? [infoPill(), ticketPill(s), prPill(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
     : ''
   setHtml(headerEl, `
     <div class="detail-header-row">
@@ -1047,7 +1018,12 @@ function renderDetailPanel(s, tab = 'running') {
   const restart = restartBtn(s)
   // Only show the destination toggle when there's at least one verb to apply it to.
   const launch = (resume || restart) ? [destinationToggle(), resume, restart].filter(Boolean).join('') : ''
-  const refs = [ticketControl(s), prControl(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
+  // References are listed in the meta rows above, so the toolbar keeps only the links
+  // that open something plus ONE Edit — a ✎ per field made this row a wall of buttons.
+  const editBtn = s.notesPath
+    ? `<button class="act" data-edit-refs="${escapeHtml(s.notesPath)}" aria-label="Edit session details" data-tip="Edit PRs & tickets">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')}</button>`
+    : ''
+  const refs = [notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
   const actions = launch + (launch && refs ? '<span class="act-sep"></span>' : '') + refs
 
   setHtml(infoEl, `
@@ -1212,8 +1188,16 @@ function installDelegatedHandlers() {
   if (delegationInstalled) return
   delegationInstalled = true
   document.body.addEventListener('click', e => {
-    const url = e.target.closest('.pill[data-url], .ticket-chip[data-url]')
-    if (url) { window.api.openExternal(url.dataset.url); return }
+    // Anything carrying a data-url opens externally: the toolbar pills, the card's ticket
+    // chip, and the reference links in the detail meta rows. Matching by class meant a new
+    // link type silently did nothing when clicked, so match the attribute itself.
+    const url = e.target.closest('[data-url]')
+    if (url && url.dataset.url) {
+      window.api.openExternal(url.dataset.url).then(res => {
+        if (res && res.ok === false) console.warn(`could not open ${url.dataset.url}: ${res.error}`)
+      })
+      return
+    }
 
     const infoBtn = e.target.closest('[data-info-pop]')
     if (infoBtn) {
@@ -1234,18 +1218,10 @@ function installDelegatedHandlers() {
       return
     }
 
-    const prEdit = e.target.closest('[data-pr-edit]')
-    if (prEdit) {
+    const editRefs = e.target.closest('[data-edit-refs]')
+    if (editRefs) {
       e.stopPropagation()
-      if (document.getElementById('pr-editor')) { closePrEditor(); return }
-      openLinkEditor(prEdit, 'pr', prEdit.dataset.prEdit)
-      return
-    }
-    const ticketEdit = e.target.closest('[data-ticket-edit]')
-    if (ticketEdit) {
-      e.stopPropagation()
-      if (document.getElementById('pr-editor')) { closePrEditor(); return }
-      openLinkEditor(ticketEdit, 'ticket', ticketEdit.dataset.ticketEdit)
+      openEditRefs(editRefs.dataset.editRefs)
       return
     }
 

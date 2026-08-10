@@ -109,6 +109,30 @@
     </form>
   </dialog>
 
+  <!-- Edit a session's references. One dialog for every editable field, replacing the
+       per-field ✎ buttons that crowded the detail toolbar. Writes go through
+       set_pr_links / set_tickets (ADR-013 guards); everything else on a session is
+       owned by its notes.md and the skills. -->
+  <dialog id="edit-refs-modal" class="modal">
+    <div class="modal-form">
+      <h2 class="modal-title">Edit session details</h2>
+      <p class="modal-hint">One entry per line — the first is the one shown on the card. Leave a box empty to clear it.</p>
+      <label class="modal-field">
+        <span class="modal-label">Tickets</span>
+        <textarea id="edit-tickets" rows="3" spellcheck="false" autocomplete="off" placeholder="FEAT-1842"></textarea>
+      </label>
+      <label class="modal-field">
+        <span class="modal-label">Pull requests</span>
+        <textarea id="edit-prs" rows="3" spellcheck="false" autocomplete="off" placeholder="https://github.com/owner/repo/pull/123"></textarea>
+      </label>
+      <div id="edit-refs-error" class="modal-error" hidden></div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn" id="edit-refs-cancel">Cancel</button>
+        <button type="button" class="modal-btn primary" id="edit-refs-save">Save</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Import: adopt an existing (unmanaged) Claude Code session. Picks from the most
        recent transcripts, then launches `claude --resume <id>` + /import-session (the skill
        writes the notes.md; the app only launches — ADR-012). -->

@@ -1426,6 +1426,16 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 }
 
 /* Meta rows */
+/* Reference values inside a meta row (tickets, PRs). Each opens externally; without a
+   URL (no tracker configured) the id renders as plain text instead of a dead link. */
+.ref-link {
+  font: inherit; color: var(--accent); background: none; border: none;
+  padding: 0; cursor: pointer;
+}
+.ref-link:hover { text-decoration: underline; }
+.ref-plain { color: var(--text-secondary); }
+.ref-sep { color: var(--text-tertiary); margin: 0 6px; }
+
 .detail-meta {
   display: flex;
   flex-direction: column;
