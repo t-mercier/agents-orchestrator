@@ -110,9 +110,19 @@ function ensureTerminal(sessionId, restartSlug = '', command = '') {
     // OSC 8 hyperlinks — how Claude Code prints a PR it just opened, and how modern CLIs
     // emit links generally. These are NOT plain text, so WebLinksAddon's regex never sees
     // them: without a linkHandler xterm renders them underlined and does nothing on click.
+    // An OSC 8 target is attacker-controlled text: any command, repo or agent output can
+    // emit one. open_external is the authoritative guard (it rejects anything but http(s)),
+    // but check here too so a bad scheme is refused with a clear message rather than a
+    // generic backend error — and so the renderer stays safe if that guard ever loosens.
     linkHandler: {
       activate: (_event, text) => {
-        window.api.openExternal(text).then(res => {
+        let url
+        try { url = new URL(text) } catch { console.warn(`ignoring malformed link: ${text}`); return }
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          console.warn(`refusing to open a non-http(s) link: ${text}`)
+          return
+        }
+        window.api.openExternal(url.toString()).then(res => {
           if (res && res.ok === false) console.warn(`could not open ${text}: ${res.error}`)
         })
       },
