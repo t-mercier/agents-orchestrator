@@ -829,6 +829,9 @@ body.mode-board .drawer-ctl { display: inline-flex; }
   border-radius: 7px; padding: 5px 10px; cursor: pointer;
 }
 .import-more:hover { color: var(--text-primary); border-color: var(--accent); }
+/* An author `display` beats the browser's [hidden] rule, so restate it — otherwise the
+   pager stays visible with nothing left to fetch and clicking it looks broken. */
+.import-more[hidden] { display: none; }
 
 .filter-btn {
   display: inline-flex; align-items: center; gap: 5px;
@@ -1824,6 +1827,9 @@ body.dl-drag-active { cursor: grabbing; user-select: none; }
 .list-drag-item { cursor: grab; }
 body.dl-drag-active .list-card { pointer-events: none; }
 .unmanaged-slot { display: block; }
+/* Same trap as .import-more: renderUnmanagedSection toggles `hidden` on this slot, and an
+   author `display` would beat the browser's [hidden] rule. */
+.unmanaged-slot[hidden] { display: none; }
 
 .list-group { margin: 4px 6px; border: 1px solid rgba(var(--accent-rgb), 0.4); border-radius: 12px; background: rgba(var(--accent-rgb), 0.05); overflow: hidden; }
 .list-group-head { display: flex; align-items: center; gap: 6px; padding: 7px 9px; cursor: grab; }

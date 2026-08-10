@@ -890,13 +890,18 @@ async function openImportModal(opts) {
 // the page so "Load more" only shows while there is genuinely more to fetch.
 async function loadImportPage(reset) {
   if (reset) { importSessions = []; importOffset = 0 }
-  try {
-    const res = await window.api.discoverSessionsPage(IMPORT_PAGE, importOffset)
-    const page = (res && res.sessions) || []
-    importTotal = (res && res.total) || 0
-    importSessions = importSessions.concat(page)
-    importOffset += page.length
-  } catch (_) { /* keep what we have */ }
+  const res = await window.api.discoverSessionsPage(IMPORT_PAGE, importOffset)
+  if (res && res.ok === false) {
+    // Say so rather than leaving a button that appears to do nothing.
+    showImportError(`Could not list sessions: ${res.error}`)
+    const more = document.getElementById('import-more')
+    if (more) more.hidden = true
+    return
+  }
+  const page = (res && res.sessions) || []
+  importTotal = (res && res.total) || 0
+  importSessions = importSessions.concat(page)
+  importOffset += page.length
   renderImportList(document.getElementById('import-search').value || '')
   const more = document.getElementById('import-more')
   if (more) more.hidden = importSessions.length >= importTotal

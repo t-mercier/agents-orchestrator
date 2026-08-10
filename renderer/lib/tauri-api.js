@@ -23,9 +23,12 @@
     // Unmanaged transcripts (no notes.md) for the "Import a session" picker.
     discoverSessions: () => invoke('discover_sessions'),
     // One page of ALL untracked sessions + the full count → { sessions, total }.
+    // Errors are returned, not swallowed: a missing command (an app built before this
+    // existed) would otherwise make "Load more" do nothing at all, silently.
     discoverSessionsPage: (limit, offset) =>
       invoke('discover_sessions_page', { limit, offset })
-        .catch(() => ({ sessions: [], total: 0 })),
+        .then((r) => ({ ok: true, ...r }))
+        .catch((e) => ({ ok: false, error: String(e), sessions: [], total: 0 })),
     // Never let a rejected open (unsupported scheme) become an unhandled promise
     // rejection — that made a link click look like it did nothing at all.
     openExternal: (url) =>
