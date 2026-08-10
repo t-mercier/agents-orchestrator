@@ -10,6 +10,20 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0-alpha] - 2026-08-10
+
+### Added
+- **A staged skill-learning loop** — the session skills can now propose *procedural* knowledge back into `~/.claude/skills/`, the way `/distil` already promotes decisions to an Obsidian vault. Three new bundled skills:
+  - **`/skill-propose`** stages what a session taught as a new skill, or (preferred) a targeted patch to an existing one. It fires only when the session actually taught something reusable — a complex task that succeeded, a dead end whose workaround is worth keeping, an approach the user corrected, a non-trivial workflow — and stays silent otherwise. Before creating anything it asks the only question that keeps a skill set from inflating: *what umbrella class does this serve, and would a maintainer write it as N skills or as one with N labelled subsections?*
+  - **`/skills-review`** is the approval gate, and the **only** path by which a proposal becomes active. It shows the full content or a real diff first, and reports when the loop last produced anything so a silently dead loop is visible.
+  - **`/skills-curate`** is the periodic pass over the whole collection — the vantage point from which a *cluster* is visible at all. It groups by prefix, names the umbrella, and stages merges, demotions to `references/`, or archives.
+  - **Nothing is ever auto-applied, and nothing is ever deleted.** Proposals live in `~/.claude/skills-pending/`, which no session loads; the maximum destructive action is archiving into `~/.claude/skills/.archive/`, which is recoverable. Curation only ever moves skills it created itself (`origin: agent-proposed`) — hand-written and plugin skills are reported, never touched.
+  - Off by default: the `/close-session` · `/save-session` hook is gated on `skillProposals: true` in the config, like the existing Obsidian distil.
+- **Per-skill usage tracking** (`skills/lib/skill_usage.py`) — derives `use_count` and `last_activity_at` per skill from the transcripts' `attributionSkill` field, and runs the lifecycle `active → stale (30 d) → archived (90 d)` on real activity rather than on anyone's judgement. A never-used skill is protected by a grace floor: no usage is *absence of evidence*, not evidence of uselessness. Reading the transcripts rather than hooking the `Skill` tool is deliberate — a `PostToolUse` hook only sees skills the *agent* invoked, and would systematically undercount the ones you type yourself (`/close-session`, `/eod`). The first scan backfills months of history; later scans are incremental.
+
+### Fixed
+- **Patch proposals are machine-checked, not eyeballed** (`skills/lib/patch_apply.py`) — a replacement routinely contains its own ``` fenced blocks, and a three-backtick wrapper ended at the first inner fence, silently truncating it and writing broken instructions into a skill. The format now requires a five-backtick wrapper, and one shared applier refuses rather than guesses: a wrapper that is too short, an unclosed fence, an anchor that does not match exactly once, or a patch already applied. That last guard matters for the "insert before X" shape, where the anchor still matches after a first apply — re-running such a patch used to duplicate the insertion.
+
 ## [0.4.1-alpha] - 2026-08-10
 
 A fix release, mostly from the first external users' feedback.

@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.4.1"
+version = "0.5.0"
 description = "Mission control for your parallel Claude Code sessions — a native desktop dashboard for macOS & Linux."
 authors = ["Timothée Mercier"]
 license-file = "LICENSE"
