@@ -10,6 +10,9 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+- **The knowledge-notes tier is now advertised** — the README and the landing page told the per-session story (a `notes.md` that survives compaction) and stopped there; the tier that survives *across* sessions was documented nowhere, so no visitor could know it existed. Both now carry it, with the honest boundary drawn: distilling on close ships, and a dedicated Context-Brief command to read it back is named on the roadmap rather than implied.
+
 ### Changed
 - **Persistent memory no longer looks like an Obsidian feature** — the "vault" was always just a folder of Markdown: the session skills write notes into it, `/route` reads them back, and nothing in the code has ever touched Obsidian (no URI scheme, no plugin, no API). But the naming — an *Obsidian* toggle, an *Obsidian vault* path — meant anyone without Obsidian reasonably concluded the feature was not for them, and skipped persistent memory entirely. It is now **knowledge notes**: point a space at any folder of Markdown. The config key `obsidian` became `knowledge`, the legacy name is still read everywhere (Rust, the skills' Python helper, the Settings UI), and a config only gains the new name when the app next saves it — so nothing to change by hand. `roots[].vaultPath` keeps its name: "vault" is generic, and it is a path field, not the word that was turning people away.
 

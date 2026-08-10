@@ -94,6 +94,7 @@ Terminal tabs don't scale. You need mission control.
 - **Looks & density** — curated colour "looks" (accent + a subtle surface ambiance), a custom accent, and Detailed / Compact / Minimal card density. Dark & light themes.
 - **Lifecycle tabs** — Running · Closed · Archived, with live **search** and a **⚲ Filter** popover (category checkboxes, one control across every view).
 - **Spaces** — group categories under multiple named spaces (e.g. *Work*, *Perso*, a client). The **List** organises into collapsible **space sections** → category groups; the **Board** gets its own space filter next to its search. Pinned and ⚡ waiting cards float above every space section — they're your shortlist, so they stay at the top of the column. A single space configured ⇒ no space chrome at all.
+- **Knowledge that outlives a session** — closing a session distils its high-signal decisions into a folder of **knowledge notes** (per space), so what cost you an afternoon is still there months later, in plain Markdown a fresh session can be pointed at. A folder you choose; **Obsidian is one way to browse it, not a requirement**.
 - **Backup** — export / import all your settings to a file (handy before a reinstall).
 
 ### Two ways to look at your work
@@ -202,6 +203,8 @@ Categories, note locations and knowledge-notes folders all come from your shared
 ### Memory that beats compaction
 
 Long sessions force the assistant to **compact** its own history — silently dropping older context until it loses the thread. This app keeps what matters in `notes.md` on disk instead: `/close-session` records the goal, decisions and next steps **plus the session id**; `/restart-session` loads all of it — and that id — into a fresh conversation, so the chain back to the original is never broken. Need the literal transcript? `claude --resume <id>` replays it verbatim.
+
+**And a second tier, across sessions.** A `notes.md` remembers *one* session; the decision that cost you an afternoon deserves to outlive it. Give a space a knowledge-notes folder and `/close-session` distils the high-signal decisions into it as atomic notes — marking the source bullet so the same one is never promoted twice. The notes are plain files, so a fresh session can be pointed at them rather than re-deriving the same conclusion from the code. A dedicated Context-Brief command — read the space's notes, the past sessions and the tracker *before* investigating — exists in the author's own toolbox and is on the roadmap to be bundled; it is not shipped yet.
 
 ```mermaid
 flowchart LR
@@ -334,6 +337,7 @@ Leave it blank and ticket IDs simply show as a (non-clickable) tag. *(The legacy
 - [ ] Standalone terminal tab — use the in-app terminal for ad-hoc commands, not just resuming a session
 - [ ] Signed + notarized `.dmg` releases
 - [ ] Homebrew cask · auto-update
+- [ ] **`/route` — a Context Brief before you investigate**: read the space's knowledge notes + past session notes + the tracker, and summarise what is already known. Works today in the author's setup (space-aware, no hardcoded paths); bundling it needs an English rewrite and a tracker-agnostic step.
 - [ ] Richer knowledge-notes integration (auto-distil, backlink graph)
 
 ## Changelog
