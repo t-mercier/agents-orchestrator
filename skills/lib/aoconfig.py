@@ -168,6 +168,35 @@ def vault_for(cfg, name):
     return expand(obs.get(key) or '')
 
 
+def vaults(cfg):
+    """Every distinct configured Obsidian vault path, in root order.
+
+    `vault_for` answers "which vault for THIS category"; this answers "all of them", for
+    a caller that has no category to key off (an unmanaged terminal). Space names never
+    appear — users name their own spaces, so a skill must resolve through the config
+    rather than hardcode a name or a path.
+    """
+    obs = cfg.get('obsidian') or {}
+    if not obs.get('enabled'):
+        return []
+    out = []
+    roots = cfg.get('roots')
+    if isinstance(roots, list):
+        for r in roots:
+            if isinstance(r, dict):
+                vp = expand(r.get('vaultPath', '') or '')
+                if vp and vp not in out:
+                    out.append(vp)
+    if out:
+        return out
+    # v1 shim, same order as roots_list's fallback (Work then Perso).
+    for key in ('workVaultPath', 'personalVaultPath'):
+        vp = expand(obs.get(key) or '')
+        if vp and vp not in out:
+            out.append(vp)
+    return out
+
+
 def flag(cfg, key):
     """A boolean opt-in from the config root. Prints 'on'/'' so a shell `[ -n ... ]`
     test reads naturally. Unknown keys are off — an optional step stays off by default."""
@@ -189,7 +218,7 @@ def main():
     args = sys.argv[1:]
     cfg = load()
     if not args:
-        print("usage: aoconfig.py categories|roots|rootpath|root|scope|base|dir|vault|flag|find [args]")
+        print("usage: aoconfig.py categories|roots|rootpath|root|scope|base|dir|vault|vaults|flag|find [args]")
         return
     cmd = args[0]
     if cmd == 'categories':
@@ -203,6 +232,8 @@ def main():
     elif cmd == 'root' and len(args) >= 2:
         entry = find_entry(cfg, args[1]) or {'name': args[1]}
         print(root_name_of(entry))
+    elif cmd == 'vaults':
+        print('\n'.join(vaults(cfg)))
     elif cmd == 'flag' and len(args) >= 2:
         print(flag(cfg, args[1]))
     elif cmd in ('scope', 'vault') and len(args) >= 2:
