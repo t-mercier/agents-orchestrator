@@ -145,6 +145,7 @@ cd ai-agents-orchestrator
 
 # 1. Install the session skills + seed your config
 bash scripts/install.sh
+#    (later, after a `git pull`, re-run it with --force — see "Session skills")
 
 # 2. Run the app (system WebView — no Chromium bundled)
 cargo tauri dev
@@ -184,13 +185,18 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/skills-review` | The approval gate: list, diff, then approve or reject a staged proposal. The only path by which one goes live |
 | `/skills-curate` | Periodic pass over the whole set: refresh usage, report `active`/`stale`/`archived`, stage merges of overlapping skills |
 
-Categories, note locations and Obsidian vaults all come from your shared config, so the skills and the app stay in sync. The installer won't overwrite a customised skill unless you pass `--force`.
+Categories, note locations and Obsidian vaults all come from your shared config, so the skills and the app stay in sync.
 
 > [!IMPORTANT]
-> **Updating from an earlier version?** Your config **auto-migrates to v2** on first launch — named spaces + per-space Obsidian vaults, with a `.v1-backup` kept (see [ADR-015](docs/adr/ADR-015-config-v1-to-v2-migration-flag-gated-self-cleaning.md)). Nothing to do by hand. **Re-run the installer to pull the updated skills:**
+> **Working from a clone? `git pull` does not update your skills.** It updates the repo's `skills/`; the copies Claude Code actually loads live in `~/.claude/skills/`. And a plain install **keeps an existing skill untouched** — new skills arrive, but *changed* ones are skipped, so a shipped fix silently never reaches you. After any pull that touches skills:
+>
 > ```bash
-> bash scripts/install.sh --force
+> git pull && bash scripts/install.sh --force
 > ```
+>
+> `--force` is not the default because it overwrites a skill you may have customised — so the installer names the ones whose updates it withheld, and you decide. Note `npm run install:skills` does **not** force. From the app, **Settings → Session skills → Install / update** does force, but installs the bundle compiled into *your* binary — so rebuild (`cargo tauri dev`) after pulling, or use the command above.
+>
+> **Updating from an earlier version?** Your config **auto-migrates to v2** on first launch — named spaces + per-space Obsidian vaults, with a `.v1-backup` kept (see [ADR-015](docs/adr/ADR-015-config-v1-to-v2-migration-flag-gated-self-cleaning.md)). Nothing to do by hand.
 
 ### Memory that beats compaction
 
