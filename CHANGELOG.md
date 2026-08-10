@@ -10,6 +10,22 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1-alpha] - 2026-08-10
+
+A fix release, mostly from the first external users' feedback.
+
+### Added
+- **Resuming an archived session un-archives it** — Resume left the ARCHIVED marker in place, so the session showed under Running only while its process lived, then snapped straight back to Archived the moment its terminal died. The marker is now stripped on every resume path (detail buttons, terminal pill, embedded toggle), mirroring what `/restart-session` already did. A session you pick back up rejoins the normal lifecycle and lands in Closed when it stops.
+
+### Fixed
+- **iTerm2 hotkey windows are revealed properly** — *Reveal window* selected the session's tab but never showed the window, because a hotkey window is hidden by iTerm's own mechanism rather than being an ordinary window. It now uses iTerm's `reveal hotkey window`. This one silently caused a second bug: with the reveal appearing to do nothing, the natural move on the "already running" warning was *Open anyway* — which starts a second process on the same conversation and forks it.
+- **Terminal link clicks no longer fail silently** — an unsupported URL scheme was rejected by the backend and the renderer dropped the rejection, so clicking such a link did nothing at all, with no message. Refused opens now surface. `file://` stays deliberately unsupported: terminal output is untrusted text, and a printed `file:///…/x.app` would launch on a single click.
+- **`/restart-session` no longer leaves the notes and the registry disagreeing** — it registered the new session id in `active-sessions.json` but left the `notes.md` frontmatter `session_id` on the previous one. Since the dashboard resolves a historical card from that frontmatter, the card offered to resume the *old* conversation while the registry pointed at the new one, and the real session was findable only by its transcript id.
+- **CI is green again** — `clippy::type_complexity` is an error under CI's `-D warnings`, which had left master red since 2026-07-22.
+
+### Documentation
+- **A TL;DR at the top of the README** and the gaps the first external users hit, filled in [the guide](docs/GUIDE.md): the embedded terminal is the intended way to run sessions (not merely an option), **Adopt** exists for sessions started outside the app, and one session means one process.
+
 ## [0.4.0-alpha] - 2026-08-03
 
 ### Added
