@@ -59,6 +59,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > ## What's new
 > Newest first — full history in the [changelog](CHANGELOG.md).
 >
+> - 🧠 **You don't need Obsidian for persistent memory** — the "vault" was always just a folder of Markdown, but the naming made everyone without Obsidian assume the feature wasn't for them. It is now **knowledge notes**: point a space at any folder. The config key `obsidian` became `knowledge`, with the old one still read, so nothing to change by hand.
 > - 🎓 **The skills can learn** — after a session that taught something reusable, `/skill-propose` stages it as a new skill or a patch to an existing one; `/skills-review` is the only way it goes live, and `/skills-curate` keeps the set from inflating. Nothing is auto-applied, nothing is ever deleted, and usage comes from your transcripts. Off unless you set `skillProposals: true`.
 > - 🔗 **Several PRs / tickets per session** — a task split across two PRs, or an epic plus its sub-task, no longer has to pick one. The icon shows a count and opens a picker; the editor takes one entry per line and works on any session, not just REVIEW.
 > - 📌 **Pinned sessions sit at the top of the column** — they used to float per space (and before that, per category), which defeated the point. One block at the top, just under ⚡ Needs you.
@@ -66,7 +67,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > - 📥 **"Recent · unmanaged" section + Adopt** — a lazy, collapsible section at the top of Running lists recent Claude Code sessions that aren't managed yet; one **Adopt** click resumes + registers them. (Replaces the old ＋Import button.)
 > - 🗂 **Reorder & group your list (drag)** — in the List view, drag to reorder your categories and sessions, and **group related sessions** (e.g. sub-tickets of a parent) by dragging one onto another, Kanban-style. Collapsible, colour-coded, renamable groups.
 > - 📊 **Usage bar → per-session** — the bar's **context %** and **model** now follow the **selected session** (the 5-hour & weekly windows stay account-global).
-> - ⚙️ **Config v2, auto-migrated** — named **spaces**, each with its own Obsidian **vault**. A legacy v1 config (work/personal roots + category `scope`) is migrated to v2 on first launch, with a backup kept. Nothing to do by hand.
+> - ⚙️ **Config v2, auto-migrated** — named **spaces**, each with its own **knowledge-notes folder**. A legacy v1 config (work/personal roots + category `scope`) is migrated to v2 on first launch, with a backup kept. Nothing to do by hand.
 > - 📊 **Usage bar** — a slim bottom bar with your **model**, the **5-hour** & **weekly** rate-limit windows (with reset countdowns) and **context %**, right in the app. Automatic for sessions launched from the dashboard; never touches your global settings.
 > - 🖥 **"Claude Desktop" group** — live sessions opened from the Claude Desktop app now group on their own instead of the catch-all "OTHER".
 > - 📝 **Session summaries on cards** — cards & detail show the one-line summary written by `/save-session` · `/close-session`, not raw transcript output.
@@ -185,7 +186,7 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/skills-review` | The approval gate: list, diff, then approve or reject a staged proposal. The only path by which one goes live |
 | `/skills-curate` | Periodic pass over the whole set: refresh usage, report `active`/`stale`/`archived`, stage merges of overlapping skills |
 
-Categories, note locations and Obsidian vaults all come from your shared config, so the skills and the app stay in sync.
+Categories, note locations and knowledge-notes folders all come from your shared config, so the skills and the app stay in sync.
 
 > [!IMPORTANT]
 > **Working from a clone? `git pull` does not update your skills.** It updates the repo's `skills/`; the copies Claude Code actually loads live in `~/.claude/skills/`. And a plain install **keeps an existing skill untouched** — new skills arrive, but *changed* ones are skipped, so a shipped fix silently never reaches you. After any pull that touches skills:
@@ -196,7 +197,7 @@ Categories, note locations and Obsidian vaults all come from your shared config,
 >
 > `--force` is not the default because it overwrites a skill you may have customised — so the installer names the ones whose updates it withheld, and you decide. Note `npm run install:skills` does **not** force. From the app, **Settings → Session skills → Install / update** does force, but installs the bundle compiled into *your* binary — so rebuild (`cargo tauri dev`) after pulling, or use the command above.
 >
-> **Updating from an earlier version?** Your config **auto-migrates to v2** on first launch — named spaces + per-space Obsidian vaults, with a `.v1-backup` kept (see [ADR-015](docs/adr/ADR-015-config-v1-to-v2-migration-flag-gated-self-cleaning.md)). Nothing to do by hand.
+> **Updating from an earlier version?** Your config **auto-migrates to v2** on first launch — named spaces + per-space knowledge-notes folders, with a `.v1-backup` kept (see [ADR-015](docs/adr/ADR-015-config-v1-to-v2-migration-flag-gated-self-cleaning.md)). Nothing to do by hand.
 
 ### Memory that beats compaction
 
@@ -278,7 +279,7 @@ Edit everything in the app's **Settings (⚙)** — categories & colours, scan r
 }
 ```
 
-Each category names the **space** it lives under — the `root` key in the config (its folder is `<space path>/<CATEGORY>`), so the *same* category name can exist in several spaces, and the titlebar space selector scopes the view. Each space can carry a `vaultPath` (its Obsidian vault). *(Back-compat: a legacy v1 config — `workRoot`/`personalRoot`, a category `scope` of `work`/`personal`, and `obsidian.workVaultPath`/`personalVaultPath` — is auto-migrated on launch to the `Work`/`Perso` spaces + per-space `vaultPath` (a backup is kept), so existing configs keep working untouched.)*
+Each category names the **space** it lives under — the `root` key in the config (its folder is `<space path>/<CATEGORY>`), so the *same* category name can exist in several spaces, and the titlebar space selector scopes the view. Each space can carry a `vaultPath` — its **knowledge notes**: a plain folder of Markdown the session skills distil decisions into, and `/route` reads back before you investigate. Obsidian is a pleasant way to browse it; nothing requires it, and the config key is `knowledge` (the old `obsidian` key is still read). *(Back-compat: a legacy v1 config — `workRoot`/`personalRoot`, a category `scope` of `work`/`personal`, and `obsidian.workVaultPath`/`personalVaultPath` — is auto-migrated on launch to the `Work`/`Perso` spaces + per-space `vaultPath` (a backup is kept), so existing configs keep working untouched.)*
 
 **Ticket tracking — any tracker, not just Jira.** `ticketBaseUrl` is just a URL prefix: the app appends each session's ticket ID to it to make the ID clickable. Point it at whatever you use:
 
@@ -333,7 +334,7 @@ Leave it blank and ticket IDs simply show as a (non-clickable) tag. *(The legacy
 - [ ] Standalone terminal tab — use the in-app terminal for ad-hoc commands, not just resuming a session
 - [ ] Signed + notarized `.dmg` releases
 - [ ] Homebrew cask · auto-update
-- [ ] Optional Obsidian integration (auto-distil notes)
+- [ ] Richer knowledge-notes integration (auto-distil, backlink graph)
 
 ## Changelog
 

@@ -140,9 +140,17 @@ fn derive(user: &Value) -> Value {
         })
         .collect();
 
-    let obs = user.get("obsidian").cloned().unwrap_or_else(|| json!({}));
-    let obsidian = json!({
-        "enabled": obs.get("enabled").and_then(Value::as_bool).unwrap_or(false),
+    // `knowledge` is the current name; `obsidian` is read as legacy so an existing
+    // config keeps working untouched. The feature was never Obsidian-specific — a vault is
+    // a folder of Markdown, and Obsidian is only one way to browse it — and the old name
+    // made users without Obsidian assume the whole thing wasn't for them.
+    let know = user
+        .get("knowledge")
+        .or_else(|| user.get("obsidian"))
+        .cloned()
+        .unwrap_or_else(|| json!({}));
+    let knowledge = json!({
+        "enabled": know.get("enabled").and_then(Value::as_bool).unwrap_or(false),
     });
 
     let ticket_base = user
@@ -188,7 +196,7 @@ fn derive(user: &Value) -> Value {
         "version": 2,
         "roots": roots_out,
         "categories": categories,
-        "obsidian": obsidian,
+        "knowledge": knowledge,
         "ticketBaseUrl": ticket_base,
         "terminalApp": terminal_app,
         "scanDirs": scan_dirs,
@@ -303,7 +311,8 @@ fn migrate_v1_value(raw: &Value) -> Option<Value> {
     let has_legacy = raw.get("workRoot").is_some()
         || raw.get("personalRoot").is_some()
         || raw
-            .get("obsidian")
+            .get("knowledge")
+            .or_else(|| raw.get("obsidian"))
             .map(|o| o.get("workVaultPath").is_some() || o.get("personalVaultPath").is_some())
             .unwrap_or(false)
         || raw
@@ -318,13 +327,15 @@ fn migrate_v1_value(raw: &Value) -> Option<Value> {
     let work_root = expand(raw.get("workRoot").and_then(Value::as_str).unwrap_or("~/work"));
     let personal_root = expand(raw.get("personalRoot").and_then(Value::as_str).unwrap_or("~"));
     let work_vault = expand(
-        raw.get("obsidian")
+        raw.get("knowledge")
+            .or_else(|| raw.get("obsidian"))
             .and_then(|o| o.get("workVaultPath").or_else(|| o.get("vaultPath")))
             .and_then(Value::as_str)
             .unwrap_or(""),
     );
     let personal_vault = expand(
-        raw.get("obsidian")
+        raw.get("knowledge")
+            .or_else(|| raw.get("obsidian"))
             .and_then(|o| o.get("personalVaultPath"))
             .and_then(Value::as_str)
             .unwrap_or(""),
@@ -340,7 +351,7 @@ fn migrate_v1_value(raw: &Value) -> Option<Value> {
             json!({ "name": "Perso", "path": personal_root }),
         ],
     };
-    // Fold the legacy obsidian work/personal vault split onto the matching root by name,
+    // Fold the legacy work/personal vault split onto the matching root by name,
     // without clobbering a vaultPath a root already carries.
     for r in v2_roots.iter_mut() {
         if let Some(obj) = r.as_object_mut() {
@@ -379,7 +390,8 @@ fn migrate_v1_value(raw: &Value) -> Option<Value> {
         "version": 2,
         "roots": v2_roots,
         "categories": v2_cats,
-        "obsidian": { "enabled": raw.get("obsidian").and_then(|o| o.get("enabled")).cloned().unwrap_or(json!(false)) },
+        "knowledge": { "enabled": raw.get("knowledge").or_else(|| raw.get("obsidian"))
+            .and_then(|o| o.get("enabled")).cloned().unwrap_or(json!(false)) },
         "ticketBaseUrl": raw.get("ticketBaseUrl").cloned().unwrap_or(json!("")),
         "terminalApp": raw.get("terminalApp").cloned().unwrap_or(json!("")),
         "migratedToV2": true,
@@ -404,7 +416,7 @@ pub fn default_config() -> Value {
             { "name": "TEST",   "color": "#cdd0d6", "root": "Work" },
             { "name": "PERSO",  "color": "#8fd9ff", "root": "Perso" }
         ],
-        "obsidian": { "enabled": false },
+        "knowledge": { "enabled": false },
         "ticketBaseUrl": ""
     })
 }
@@ -468,6 +480,36 @@ mod tests {
         assert_eq!(d["scanDirs"].as_array().unwrap().len(), 6);
     }
 
+
+    // The `obsidian` → `knowledge` rename must never break an existing config: the legacy
+    // key is still read, and the derived output only ever carries the new name.
+    #[test]
+    fn knowledge_reads_the_legacy_obsidian_key_and_emits_the_new_name() {
+        let legacy = json!({
+            "roots": [{"name":"Work","path":"/w"}],
+            "categories": [{"name":"FEAT","color":"#aaaaaa","root":"Work"}],
+            "obsidian": { "enabled": true }
+        });
+        let d = derive(&legacy);
+        assert_eq!(d["knowledge"]["enabled"], true, "legacy obsidian.enabled honoured");
+        assert!(d.get("obsidian").is_none(), "derived config drops the legacy name");
+
+        // The new name wins when both are present (a half-migrated file).
+        let both = json!({
+            "roots": [{"name":"Work","path":"/w"}],
+            "categories": [{"name":"FEAT","color":"#aaaaaa","root":"Work"}],
+            "knowledge": { "enabled": true },
+            "obsidian": { "enabled": false }
+        });
+        assert_eq!(derive(&both)["knowledge"]["enabled"], true);
+
+        // Neither present → off, as before.
+        let neither = json!({
+            "roots": [{"name":"Work","path":"/w"}],
+            "categories": [{"name":"FEAT","color":"#aaaaaa","root":"Work"}]
+        });
+        assert_eq!(derive(&neither)["knowledge"]["enabled"], false);
+    }
 
     #[test]
     fn derive_v2_allows_same_category_under_two_roots() {

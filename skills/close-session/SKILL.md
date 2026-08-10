@@ -3,7 +3,7 @@ name: close-session
 description: >-
   Wrap up the active session: resolve its registered notes.md, summarise what
   this session did (Decisions, Files touched, Open questions, Next steps), update
-  those sections, and append a Session history entry. If Obsidian is enabled in
+  those sections, and append a Session history entry. If knowledge notes are enabled in
   config, distils a short atomic note to the matching vault. Trigger on "/close-session",
   "wrap up", "save session notes", "ferme la session".
 allowed-tools: Bash Read Edit Write
@@ -152,7 +152,7 @@ NOW=$(date +"%Y-%m-%d %H:%M")
 - **No new work since the last close?** Still append a brief line, e.g. `- <NOW> | session=<SESSION_ID> | reclosed — no new work since the last close`.
 - **Only skip** if the latest existing entry is already a close dated **today** (avoids a same-day duplicate). An older close (a previous day) does not count — append a fresh one.
 
-## Step 7 — Optional: distil to Obsidian (gated)
+## Step 7 — Optional: distil to the knowledge notes (gated)
 
 Only if a vault is configured for this category's scope:
 
@@ -167,7 +167,7 @@ the Next steps, and a backlink line `Source: <NOTES_PATH>`. Create the
 
 ## Step 7b — Optional: propose a skill from what this session taught (gated)
 
-The procedural twin of the Obsidian distil above: that one promotes *facts*, this one
+The procedural twin of the knowledge distil above: that one promotes *facts*, this one
 promotes *how we got there*. Gated, so it is off unless explicitly enabled:
 
 ```bash

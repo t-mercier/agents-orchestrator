@@ -158,7 +158,7 @@
     </div>
   </dialog>
 
-  <!-- Settings: edits the shared config (roots, categories, Obsidian, Jira). The
+  <!-- Settings: edits the shared config (roots, categories, knowledge notes, Jira). The
        app DOES write here (~/.config/ai-agents-orchestrator/config.json) — this is the
        one write the dashboard makes; session files under ~/.claude stay read-only. -->
   <dialog id="settings-modal" class="modal modal-wide">
@@ -373,7 +373,7 @@
             </div>
           </section>
 
-          <!-- Integrations: ticket tracker + Obsidian -->
+          <!-- Integrations: ticket tracker + knowledge notes -->
           <section class="settings-panel" data-settings-panel="integrations">
             <div class="settings-section">
               <label class="modal-field">
@@ -385,7 +385,8 @@
             <div class="settings-section">
               <label class="modal-field checkbox-field">
                 <input id="set-obsidian-enabled" type="checkbox">
-                <span>Enable Obsidian vault links</span>
+                <span>Distil session decisions into knowledge notes</span>
+                <em class="modal-hint">Plain Markdown in a folder you choose. Obsidian is one nice way to browse it — not a requirement.</em>
               </label>
               <label class="modal-field">
                 <span>Work vault path <em>(optional)</em></span>

@@ -13,7 +13,7 @@ argument-hint: "[a hint about what to capture]"
 # /skill-propose — stage a skill from what this session learned
 
 Turns *how we got there* into a reusable skill. This is the **procedural** twin of the
-Obsidian distil: `/distil` promotes decisions and facts (declarative) to the vault, this
+knowledge distil: `/distil` promotes decisions and facts (declarative) to the notes, this
 promotes workflows (procedural) to `skills/`.
 
 **Two hard rules, no exceptions:**

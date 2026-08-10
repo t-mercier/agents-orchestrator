@@ -30,7 +30,7 @@
   // theme, accent, card density, terminal appearance, and the Kanban columns. They
   // must commit only on Save — Cancel/Esc reverts the whole live set to the snapshot
   // taken when the modal opened. (Config-backed fields — roots, categories, Jira,
-  // Obsidian, terminal app — are already Save-gated via collect()/setConfig, so they
+  // knowledge notes, terminal app — are already Save-gated via collect()/setConfig, so they
   // revert on Cancel for free; no snapshot needed.)
   let liveSnapshot = null
   let settingsSaved = false

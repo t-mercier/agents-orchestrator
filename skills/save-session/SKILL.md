@@ -157,7 +157,7 @@ only checkpoints; the session stays open.
 
 ## Step 6b — Optional: propose a skill from what this session taught (gated)
 
-The procedural twin of the Obsidian distil above: that one promotes *facts*, this one
+The procedural twin of the knowledge distil above: that one promotes *facts*, this one
 promotes *how we got there*. Gated, so it is off unless explicitly enabled:
 
 ```bash

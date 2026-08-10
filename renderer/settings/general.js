@@ -11,7 +11,8 @@
 
   // ── Spaces editor: each row = {name, path, vaultPath}. Renaming a space (the name changed from
   // its original) retags the categories under it on save; the path re-points scanning.
-  // vaultPath is where Obsidian vault lives for this space (optional).
+  // vaultPath is the knowledge-notes folder for this space (optional). Plain Markdown —
+  // Obsidian is one way to browse it, not a requirement.
   let spaceRowSeq = 0
   function addSpaceRow(space = {}) {
     const idPath = `set-space-path-${spaceRowSeq}`
@@ -27,8 +28,8 @@
         <button type="button" class="icon-btn space-remove" title="Remove this space (its folders on disk are left untouched)">✕</button>
       </div>
       <input class="space-path" id="${idPath}" type="text" placeholder="No folder selected — click Browse" value="${escAttr(space.path)}" readonly spellcheck="false" autocomplete="off" title="${escAttr(space.path)}">
-      <div style="font-size:0.85em;color:var(--text-2);margin-top:0.25em;">Obsidian vault (optional):</div>
-      <input class="space-vault" id="${idVault}" type="text" placeholder="Path to Obsidian vault for this space" value="${escAttr(space.vaultPath || '')}" spellcheck="false" autocomplete="off">`
+      <div style="font-size:0.85em;color:var(--text-2);margin-top:0.25em;">Knowledge notes (optional) — any folder of Markdown:</div>
+      <input class="space-vault" id="${idVault}" type="text" placeholder="Folder of Markdown notes for this space (Obsidian vault, or any folder)" value="${escAttr(space.vaultPath || '')}" spellcheck="false" autocomplete="off">`
     item.querySelector('.space-remove').addEventListener('click', () => item.remove())
     spaceList.appendChild(item)
   }

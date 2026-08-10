@@ -144,7 +144,9 @@ def vault_for(cfg, name):
     v2: the vault lives on the category's root (roots[].vaultPath).
     v1 shim: scope → workVaultPath/personalVaultPath (remove in ADR-015 Release N+1).
     """
-    obs = cfg.get('obsidian') or {}
+    # `knowledge` is current, `obsidian` legacy — this reads the raw config file, which
+    # only gains the new name once the app next saves it.
+    obs = cfg.get('knowledge') or cfg.get('obsidian') or {}
     if not obs.get('enabled'):
         return ''
 
@@ -176,7 +178,9 @@ def vaults(cfg):
     appear — users name their own spaces, so a skill must resolve through the config
     rather than hardcode a name or a path.
     """
-    obs = cfg.get('obsidian') or {}
+    # `knowledge` is current, `obsidian` legacy — this reads the raw config file, which
+    # only gains the new name once the app next saves it.
+    obs = cfg.get('knowledge') or cfg.get('obsidian') or {}
     if not obs.get('enabled'):
         return []
     out = []
