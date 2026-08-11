@@ -1,11 +1,14 @@
 ---
 name: skill-propose
 description: >-
-  Capture procedural knowledge from the current session as a STAGED skill proposal — a
-  new skill, or a targeted patch to an existing one — written to ~/.claude/skills-pending/
-  and never to ~/.claude/skills/. Fires only when the session actually taught something
-  reusable; stays silent otherwise. Review with /skills-review. Trigger on
-  "/skill-propose", "propose a skill", "fais-en une skill", "capture ça en skill".
+  Capture procedural knowledge as a STAGED skill proposal — a new skill, or a targeted
+  patch to an existing one — written to ~/.claude/skills-pending/ and never to
+  ~/.claude/skills/. Use PROACTIVELY, in flight: the moment the user corrects your
+  approach, or the same output goes through a SECOND rewrite pass, stop and consider
+  whether the skill that produced it is the defect. Do not wait for the session to close.
+  Fires only when the session actually taught something reusable; stays silent otherwise.
+  Review with /skills-review. Trigger on "/skill-propose", "propose a skill", "fais-en une
+  skill", "capture ça en skill", "on pourrait pas améliorer la skill ?".
 allowed-tools: Bash Read Write Edit
 argument-hint: "[a hint about what to capture]"
 ---
@@ -42,8 +45,20 @@ Look back over THIS session. A candidate exists only if at least one of these fi
    the dead end, not the destination: "X looks right but fails because Y, do Z instead".
 3. **The user corrected your approach.** The strongest signal there is — it encodes a
    preference or a constraint you did not know and would otherwise breach again.
+   **Twice on the same artifact is the loudest version of it, and it does not wait for the
+   session to end.** A second rewrite pass of one output means the first attempt followed
+   the instructions available and was still wrong — so the instructions are what is
+   missing. Say it at that moment, not at the close: three passes that end in a shrug teach
+   nothing, and the user should not have to be the one to ask.
 4. **You discovered a non-trivial workflow** — an ordering, a gate, a flag that is not
    discoverable from the code or the docs.
+
+**Then find where the defect actually lives.** If the corrected output came from a skill,
+that skill is the first suspect, and the proposal is a patch to it — not a new skill, and
+not a note. Quote the passage that led you into the mistake and say what it fails to
+cover: "outcome first" is not enough for a finding whose impact *is* the argument, and a
+rule that is right but unreachable at the moment of writing is a rule that does not exist.
+A skill that produced three rejected drafts and gets no patch will produce a fourth.
 
 Then apply the **reusability test**, which overrides all four: would this help in a
 *future, different* session? If it is specific to one repo's current state, it belongs in
