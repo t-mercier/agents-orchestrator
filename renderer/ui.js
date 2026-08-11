@@ -976,8 +976,14 @@ function renderDetailPanel(s, tab = 'running') {
   // PR / notes / board) ride on the title line; the name (flex:1) ellipsizes to make room.
   const showBadge = isHistorical || (!!s.status && s.status !== 'idle')
   const termOpen = window.getTerminalVisible && window.getTerminalVisible()
+  // Edit rides on the header too: with the terminal up, the ticket/PR icons are hidden
+  // whenever the session has none attached — which is exactly when the user needs to
+  // attach one (a PR opened mid-session only lands in notes.md at the next /save-session).
+  const editBtn = s.notesPath
+    ? `<button class="act" data-edit-refs="${escapeHtml(s.notesPath)}" aria-label="Edit session details" data-tip="Edit PRs & tickets">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')}</button>`
+    : ''
   const headerActions = termOpen
-    ? [infoPill(), ticketPill(s), prPill(s), notesPill(s.notesPath), boardPill(s)].filter(Boolean).join('')
+    ? [infoPill(), ticketPill(s), prPill(s), notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
     : ''
   setHtml(headerEl, `
     <div class="detail-header-row">
@@ -1020,9 +1026,6 @@ function renderDetailPanel(s, tab = 'running') {
   const launch = (resume || restart) ? [destinationToggle(), resume, restart].filter(Boolean).join('') : ''
   // References are listed in the meta rows above, so the toolbar keeps only the links
   // that open something plus ONE Edit — a ✎ per field made this row a wall of buttons.
-  const editBtn = s.notesPath
-    ? `<button class="act" data-edit-refs="${escapeHtml(s.notesPath)}" aria-label="Edit session details" data-tip="Edit PRs & tickets">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')}</button>`
-    : ''
   const refs = [notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
   const actions = launch + (launch && refs ? '<span class="act-sep"></span>' : '') + refs
 
