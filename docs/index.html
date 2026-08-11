@@ -211,9 +211,9 @@
   <div class="wrap">
     <div class="brand"><span class="mark"><span></span></span> AI Agents Orchestrator</div>
     <div class="nav-links">
+      <a href="#memory">Memory</a>
       <a href="#features">Features</a>
       <a href="#skills">Skills</a>
-      <a href="#memory">Memory</a>
       <a href="#security">Security</a>
       <a class="nav-cta" href="https://github.com/t-mercier/ai-agents-orchestrator">View on GitHub</a>
     </div>
@@ -277,6 +277,48 @@
         <h4>One click back in</h4>
         <p>Resume in an embedded terminal, pop it into its own pinned window, or jump to the branch, PR, or notes.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEMORY -->
+<section id="memory">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <p class="eyebrow">What makes it compound</p>
+      <h2>Your sessions forget. Your notes don't.</h2>
+      <p class="lead">Long sessions get <strong>compacted</strong> — older turns are squeezed or silently dropped, and the decision you made on day one goes with them. Every session here keeps a <code>notes.md</code> next to its code: the goal, the decisions, the next steps, and the session id. Pick the work back up weeks later, in a fresh conversation, with the thread intact.</p>
+    </div>
+    <div class="secgrid">
+      <div class="sec reveal"><h4>Written as you go</h4><p><code>/save-session</code> checkpoints the work mid-flight; <code>/close-session</code> wraps it up with a summary.</p></div>
+      <div class="sec reveal"><h4>Reloaded into a fresh chat</h4><p><code>/restart-session</code> briefs a brand-new conversation from the notes — plus every past session id, so the chain back is never broken.</p></div>
+      <div class="sec reveal"><h4>Or replayed verbatim</h4><p>Because the session id is recorded, <code>claude --resume &lt;id&gt;</code> still gives you the original transcript, turn for turn.</p></div>
+      <div class="sec reveal"><h4>A file you own</h4><p>The source of truth is markdown on your disk — not a context window, and not someone's cloud.</p></div>
+    </div>
+
+    <div class="section-head reveal" style="margin-top:56px">
+      <p class="eyebrow">And across sessions</p>
+      <h2>What you learned once, you keep.</h2>
+      <p class="lead">A <code>notes.md</code> remembers <em>one</em> session. The decision that cost you an afternoon deserves to outlive it. Each space can point at a folder of <strong>knowledge notes</strong>: the agent writes into it as it learns — and the next investigation starts by reading it back — so you stop re-deriving from the code what a past session already settled.</p>
+    </div>
+    <div class="secgrid">
+      <div class="sec reveal"><h4>Written the moment it's learned</h4><p><code>/learn</code> writes one atomic note as soon as something durable comes up — a preference you stated, a gotcha and its workaround. Waiting for the session to close means depending on a gesture that often never comes.</p></div>
+      <div class="sec reveal"><h4>Extended, not duplicated</h4><p>A fifth note on one subject dilutes retrieval instead of adding knowledge. It searches first and <strong>extends or corrects</strong> the note that already owns the subject — then links it into the index, because an orphan note is one nobody finds.</p></div>
+      <div class="sec reveal"><h4>Distilled, not dumped</h4><p><code>/close-session</code> promotes only the high-signal decisions, and marks the source, so the same bullet is never promoted twice.</p></div>
+      <div class="sec reveal"><h4>Read back before you dig</h4><p><code>/route &lt;ticket&gt;</code> builds a Context Brief from those notes, your past sessions and your tracker — <em>before</em> you open the code. It resolves which folder to read from the session's space.</p></div>
+      <div class="sec reveal"><h4>No Obsidian required</h4><p>It is a plain folder of Markdown. Obsidian is a pleasant way to browse it — so are VS Code, Logseq, or <code>grep</code>. Point a space at any folder.</p></div>
+    </div>
+
+    <div class="section-head reveal" style="margin-top:56px">
+      <p class="eyebrow">And it writes its own skills</p>
+      <h2>A mistake you fix once, it stops making.</h2>
+      <p class="lead">Notes record <em>what is true</em>; a skill records <em>how to do something</em>. When a session actually teaches a procedure — a dead end whose workaround is worth keeping, an approach you corrected — <code>/skill-propose</code> drafts it. Nothing becomes active on its own: proposals are <strong>staged</strong> outside the skills folder, and you read the diff before anything runs.</p>
+    </div>
+    <div class="secgrid">
+      <div class="sec reveal"><h4>Staged, never live</h4><p><code>/skill-propose</code> writes to <code>~/.claude/skills-pending/</code> and never to <code>~/.claude/skills/</code> — a new skill, or (preferred) a targeted patch to one you already have.</p></div>
+      <div class="sec reveal"><h4>You are the only gate</h4><p><code>/skills-review</code> is the sole path from proposed to active. It shows the full content or a real diff first, and reports when the loop last produced anything — so a loop that silently died is visible.</p></div>
+      <div class="sec reveal"><h4>Curated, never deleted</h4><p><code>/skills-curate</code> is the periodic pass over the whole set: it names the umbrella a cluster serves and stages merges or archives. Archived, not removed — recoverable, and only ever skills the agent proposed.</p></div>
+      <div class="sec reveal"><h4>It only fires when it learned</h4><p>The proposal step hangs off the session close, and stays <strong>silent</strong> unless the session met one of its criteria. A skill set that inflates on every session is worse than none.</p></div>
     </div>
   </div>
 </section>
@@ -404,37 +446,14 @@
         <div class="skill"><code>/archive-session</code><span>Mark a session archived and drop it from the active list.</span></div>
         <div class="skill"><code>/import-session</code><span>Adopt an existing Claude Code session into management under a chosen space/category.</span></div>
         <div class="skill"><code>/rename-category</code><span>Rename a category everywhere — folder, notes, and config.</span></div>
+        <div class="skill"><code>/learn</code><span>Write what you just learned straight into the space's knowledge notes — or extend the note that already covers it.</span></div>
+        <div class="skill"><code>/route</code><span>Context Brief <em>before</em> you dig: the knowledge notes, your past sessions, and your tracker on one subject.</span></div>
+        <div class="skill"><code>/skill-propose</code><span>Stage what the session taught as a new skill, or a targeted patch to an existing one. Never writes to the live skills folder.</span></div>
+        <div class="skill"><code>/skills-review</code><span>The approval gate — diff, then promote or reject. The only way a proposal becomes active.</span></div>
+        <div class="skill"><code>/skills-curate</code><span>Periodic pass over the collection: merge clusters, archive what went stale. Never deletes.</span></div>
       </div>
     </div>
     <p style="text-align:center;margin-top:34px;"><a href="https://github.com/t-mercier/ai-agents-orchestrator/blob/master/docs/GUIDE.md" style="color:var(--accent);font-weight:600;text-decoration:none;">📖 Read the full guide — session states &amp; the Start / Resume / Restart difference →</a></p>
-  </div>
-</section>
-
-<!-- MEMORY -->
-<section id="memory">
-  <div class="wrap">
-    <div class="section-head reveal">
-      <p class="eyebrow">Memory that outlives the context window</p>
-      <h2>Your sessions forget. Your notes don't.</h2>
-      <p class="lead">Long sessions get <strong>compacted</strong> — older turns are squeezed or silently dropped, and the decision you made on day one goes with them. Every session here keeps a <code>notes.md</code> next to its code: the goal, the decisions, the next steps, and the session id. Pick the work back up weeks later, in a fresh conversation, with the thread intact.</p>
-    </div>
-    <div class="secgrid">
-      <div class="sec reveal"><h4>Written as you go</h4><p><code>/save-session</code> checkpoints the work mid-flight; <code>/close-session</code> wraps it up with a summary.</p></div>
-      <div class="sec reveal"><h4>Reloaded into a fresh chat</h4><p><code>/restart-session</code> briefs a brand-new conversation from the notes — plus every past session id, so the chain back is never broken.</p></div>
-      <div class="sec reveal"><h4>Or replayed verbatim</h4><p>Because the session id is recorded, <code>claude --resume &lt;id&gt;</code> still gives you the original transcript, turn for turn.</p></div>
-      <div class="sec reveal"><h4>A file you own</h4><p>The source of truth is markdown on your disk — not a context window, and not someone's cloud.</p></div>
-    </div>
-
-    <div class="section-head reveal" style="margin-top:56px">
-      <p class="eyebrow">And across sessions</p>
-      <h2>What you learned once, you keep.</h2>
-      <p class="lead">A <code>notes.md</code> remembers <em>one</em> session. The decision that cost you an afternoon deserves to outlive it. Each space can point at a folder of <strong>knowledge notes</strong>: closing a session distils what is worth keeping into it, and the next investigation starts by reading it back — so you stop re-deriving from the code what a past session already settled.</p>
-    </div>
-    <div class="secgrid">
-      <div class="sec reveal"><h4>Distilled, not dumped</h4><p><code>/close-session</code> promotes only the high-signal decisions into an atomic note — and marks the source, so the same bullet is never promoted twice.</p></div>
-      <div class="sec reveal"><h4>Read back before you dig</h4><p><code>/route &lt;ticket&gt;</code> builds a Context Brief from those notes, your past sessions and your tracker — <em>before</em> you open the code. It resolves which folder to read from the session's space.</p></div>
-      <div class="sec reveal"><h4>No Obsidian required</h4><p>It is a plain folder of Markdown. Obsidian is a pleasant way to browse it — so are VS Code, Logseq, or <code>grep</code>. Point a space at any folder.</p></div>
-    </div>
   </div>
 </section>
 
@@ -461,12 +480,22 @@
     <div class="box reveal">
       <p class="eyebrow">Get started</p>
       <h2>Get it running in two minutes.</h2>
-      <p class="lead" style="margin:16px auto 0;">Clone it, run it, and watch your sessions line up. Runs on macOS 13+ and Linux (X11/Wayland) — needs Rust + the Tauri CLI and Claude Code.</p>
+      <p class="lead" style="margin:16px auto 0;">Grab a build below, or clone it and run it yourself. Runs on macOS 13+ and Linux (X11/Wayland); building from source needs Rust + the Tauri CLI. Either way it drives <a href="https://claude.com/claude-code" style="color:var(--accent);text-decoration:none;">Claude Code</a>, so install that too.</p>
       <p class="lead" style="margin:10px auto 0;font-size:15px;color:var(--faint);">Works with Claude Code today — <strong style="color:var(--muted);font-weight:600;">GitHub Copilot and other agent CLIs are next on the roadmap.</strong></p>
-      <div class="install"><span class="p">$</span> git clone https://github.com/t-mercier/ai-agents-orchestrator &amp;&amp; cd ai-agents-orchestrator &amp;&amp; cargo tauri dev</div>
-      <div class="cta-row" style="margin-top:28px;">
-        <a class="btn btn-primary" href="https://github.com/t-mercier/ai-agents-orchestrator">Open the repo →</a>
+      <div class="cta-row" style="margin-top:26px;">
+        <a class="btn btn-primary" id="dl-mac" href="https://github.com/t-mercier/ai-agents-orchestrator/releases">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-2.9-.8-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.6 2.2 2.8 2.2 1.1 0 1.5-.7 2.9-.7 1.3 0 1.7.7 2.8.7 1.2 0 2-1.1 2.8-2.2.6-.9.9-1.7 1.1-2.3-2.8-1.1-2.9-3.5-2.9-3.6ZM14.3 5.6c.6-.7 1-1.7.9-2.7-.9 0-2 .6-2.6 1.3-.6.6-1 1.6-.9 2.6 1 .1 2-.5 2.6-1.2Z"/></svg>
+          <span>Download for macOS</span>
+        </a>
+        <a class="btn btn-primary" id="dl-linux" href="https://github.com/t-mercier/ai-agents-orchestrator/releases">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>
+          <span>Download for Linux</span>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/t-mercier/ai-agents-orchestrator">Or build from source →</a>
       </div>
+      <p class="hero-note" id="dl-note" style="margin-top:16px;">Newest release on <a href="https://github.com/t-mercier/ai-agents-orchestrator/releases" style="color:var(--accent);text-decoration:none;">the releases page</a> — universal <code>.dmg</code> (Intel &amp; Apple Silicon) · <code>.deb</code> · <code>.AppImage</code> · <code>.rpm</code></p>
+      <p class="hero-note" style="margin-top:8px;">🍎 macOS is <strong>unsigned</strong> for now, so Gatekeeper calls it "damaged" — move it to <code>/Applications</code>, then run once: <code>xattr -cr "/Applications/AI Agents Orchestrator.app"</code></p>
+      <div class="install" style="margin-top:22px;"><span class="p">$</span> git clone https://github.com/t-mercier/ai-agents-orchestrator &amp;&amp; cd ai-agents-orchestrator &amp;&amp; cargo tauri dev</div>
     </div>
   </div>
 </section>
@@ -498,6 +527,39 @@
     img.addEventListener('click', () => { lbImg.src = img.currentSrc || img.src; lbImg.alt = img.alt || ''; lb.classList.add('open'); });
   });
   lb.addEventListener('click', closeLb);
+
+  // Download buttons: link to the real assets of the newest release, resolved at load.
+  // Asset names carry the version, so nothing here is hardcoded; and `releases/latest`
+  // is unusable while every release is a prerelease (it 404s), hence the full listing.
+  // Any failure leaves the buttons pointing at the releases page, which always works.
+  (async () => {
+    const pick = (assets, ...exts) =>
+      assets.find((a) => exts.some((e) => a.name.endsWith(e)));
+    try {
+      const res = await fetch('https://api.github.com/repos/t-mercier/ai-agents-orchestrator/releases?per_page=1');
+      if (!res.ok) return;
+      const rel = (await res.json()).find((r) => !r.draft);
+      if (!rel) return;
+      const mac = pick(rel.assets, '.dmg');
+      const linux = pick(rel.assets, '.AppImage');
+      const set = (id, asset) => {
+        if (!asset) return;
+        const el = document.getElementById(id);
+        el.href = asset.browser_download_url;
+        el.setAttribute('download', '');
+      };
+      set('dl-mac', mac);
+      set('dl-linux', linux);
+      const others = rel.assets
+        .filter((a) => /\.(deb|rpm)$/.test(a.name))
+        .map((a) => `<a href="${a.browser_download_url}" style="color:var(--accent);text-decoration:none;">${a.name.split('.').pop()}</a>`)
+        .join(' · ');
+      document.getElementById('dl-note').innerHTML =
+        `<strong>${rel.tag_name}</strong> — macOS universal <code>.dmg</code> (Intel &amp; Apple Silicon) · Linux <code>.AppImage</code>` +
+        (others ? `, or ${others}` : '') +
+        ` · <a href="${rel.html_url}" style="color:var(--accent);text-decoration:none;">release notes</a>`;
+    } catch { /* offline or rate-limited: the static links stand */ }
+  })();
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLb(); });
 </script>
 </body>

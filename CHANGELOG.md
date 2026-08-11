@@ -10,6 +10,23 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+- **The web page hands out builds directly** — it only ever linked to the repo, so someone
+  who wanted the app had to find the releases page, then the right asset. Two download
+  buttons now resolve the newest release's `.dmg` and `.AppImage` at load, with the `.deb`
+  and `.rpm` beside them. Nothing is hardcoded: the asset names carry the version, and
+  `releases/latest` is unusable while every release is a prerelease (the API 404s), so the
+  markup links to the releases listing and a script upgrades it — offline or rate-limited,
+  the static links still work. The Gatekeeper `xattr` line now sits next to the macOS
+  button, where a direct downloader will actually meet it.
+- **The knowledge tier leads the page instead of trailing it** — memory sat last, after
+  security, so the one part that compounds over months read as a footnote. It now comes
+  straight after the problem statement, covers `/learn` (a note written the moment
+  something is learned, extending the note that already owns the subject rather than
+  duplicating it), and adds the skills loop: `/skill-propose` stages, `/skills-review` is
+  the only gate, `/skills-curate` archives and never deletes. The skill list on the page
+  had drifted to the session lifecycle alone; the five knowledge skills are in it now.
+
 ## [0.7.0-alpha] - 2026-08-11
 
 ### Added
