@@ -10,6 +10,13 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **The default launch model is `opus[1m]` again** — restored in `pty.rs` / `lib.rs` after an earlier change moved it to `opus`. *(Entry written from the commit; correct the reason if it differs.)*
+- **Two Settings fields silently discarded what you typed** — Integrations still carried *Work vault path* and *Personal vault path* inputs left over from the v1 work/personal split. No JS ever read or collected them (their ids appeared nowhere else), so a folder typed there vanished on Save while the feature looked configured. They are gone, replaced by a line pointing at the real setting: the folder lives on each **space**, under *General → Spaces*.
+
+### Documentation
+- **`/route` is listed in the guide**, and `/import-session` in the README's skills table — both are bundled and were missing from one of the two lists. The README's *What's new* also picked up the 0.6.0 features it never mentioned (clickable terminal links, references in the detail panel, browsing every untracked session).
+
 ## [0.6.1-alpha] - 2026-08-10
 
 ### Fixed

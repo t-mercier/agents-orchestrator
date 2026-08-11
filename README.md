@@ -59,6 +59,9 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > ## What's new
 > Newest first — full history in the [changelog](CHANGELOG.md).
 >
+> - 🔗 **Links in the embedded terminal are clickable** — Claude Code prints a PR it just opened as an OSC 8 hyperlink; those are now clickable in the in-app terminal, with the target's scheme checked before anything is handed to the OS.
+> - 📋 **PRs and tickets listed in the detail panel** — each on its own row and clickable, behind a single **Edit** button instead of a pencil per field.
+> - 📥 **Browse every untracked session** — the *Recent · unmanaged* list is no longer capped at what fits: page through all of them, or adopt one straight from its row.
 > - 🧠 **You don't need Obsidian for persistent memory** — the "vault" was always just a folder of Markdown, but the naming made everyone without Obsidian assume the feature wasn't for them. It is now **knowledge notes**: point a space at any folder. The config key `obsidian` became `knowledge`, with the old one still read, so nothing to change by hand.
 > - 🎓 **The skills can learn** — after a session that taught something reusable, `/skill-propose` stages it as a new skill or a patch to an existing one; `/skills-review` is the only way it goes live, and `/skills-curate` keeps the set from inflating. Nothing is auto-applied, nothing is ever deleted, and usage comes from your transcripts. Off unless you set `skillProposals: true`.
 > - 🔗 **Several PRs / tickets per session** — a task split across two PRs, or an epic plus its sub-task, no longer has to pick one. The icon shows a count and opens a picker; the editor takes one entry per line and works on any session, not just REVIEW.
@@ -182,6 +185,7 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/save-session` | Checkpoint mid-flight (same summary as close, marked `(in progress)`) **without** closing it — handy before a context compaction |
 | `/restart-session <slug>` | Reload a session's notes **and its recorded session id** into a fresh session (history stays linked) |
 | `/archive-session <slug>` | Mark a session archived (drops it from the active list) |
+| `/import-session <CAT> <name>` | Adopt an unmanaged Claude Code session into management, under a chosen space and category |
 | `/rename-category <OLD> <NEW>` | Rename a category everywhere — moves the folder, re-tags notes, updates config |
 | `/skill-propose` | Stage what this session taught as a new skill — or a patch to an existing one — in `~/.claude/skills-pending/`. Never writes to `skills/` |
 | `/skills-review` | The approval gate: list, diff, then approve or reject a staged proposal. The only path by which one goes live |
