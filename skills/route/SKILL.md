@@ -85,10 +85,18 @@ are still worth searching.
 SEARCH="$HOME/.claude/skills/lib/route_search.py"
 echo "$VAULTS" | while IFS= read -r V; do
   [ -n "$V" ] || continue
+  for F in INDEX.md README.md; do [ -f "$V/$F" ] && echo "index: $V/$F"; done
   python3 "$SEARCH" notes "$QUERY" "$V"
   python3 "$SEARCH" areas "$QUERY" "$V"
+  python3 "$SEARCH" mocs  "$QUERY" "$V"
 done
 ```
+
+`Read` any `index:` line it printed **before** the matches. A vault that keeps an
+`INDEX.md` or a conventions `README.md` is telling you how it is organised and what is
+recent — reading the matches without it is reading leaves without the tree. It is also
+where an orphan note becomes visible: something in the index that the search did not
+surface means the terms are wrong, not that the subject is absent.
 
 The search discovers the layout: a vault organised as `20-Notes/` · `10-Areas/` is used as
 such, anything else is scanned as a flat folder of Markdown. Pass the query as an

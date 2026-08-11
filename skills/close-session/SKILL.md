@@ -160,10 +160,19 @@ Only if a vault is configured for this category's scope:
 VAULT=$(python3 ~/.claude/skills/lib/aoconfig.py vault "<CATEGORY>")
 ```
 
-If `$VAULT` is non-empty, write a short atomic note `"$VAULT/sessions/<slug>.md"`
-(slug = the notes.md parent dir name) with: the title, the Goal, the key Decisions,
-the Next steps, and a backlink line `Source: <NOTES_PATH>`. Create the
-`"$VAULT/sessions"` directory if needed. If `$VAULT` is empty, skip silently.
+`$VAULT` empty → skip silently.
+
+Otherwise **follow `/learn` (its Steps 3–5)** for each decision worth keeping, one note per
+decision, with `origin: close-session` and `session: <CATEGORY>/<slug>`. Do not write a
+per-session file: a dump of one session is a fifth copy of `notes.md`, it carries no id, no
+frontmatter and no index row, so the search cannot rank it and nothing links to it. `/learn`
+is the single writer that knows the vault's schema — going through it is what keeps the
+notes one coherent, searchable set, and it extends an existing note instead of adding a
+near-duplicate.
+
+Promote only what a *future, different* session would be glad to find, and mark each
+promoted bullet in `notes.md` (a trailing `↑`) so the next close does not promote it
+again.
 
 ## Step 7b — Optional: propose a skill from what this session taught (gated)
 

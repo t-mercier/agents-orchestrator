@@ -104,6 +104,11 @@ python3 "$HOME/.claude/skills/lib/route_search.py" notes "<the key nouns>" "$VAU
 
 ## Step 4 — Write the note
 
+**First, does this vault document its own schema?** A `README.md` or `CONVENTIONS.md` at
+its root is the user's own contract — read it and follow it, including its frontmatter keys
+and its folder names. A note that ignores the schema it lives in is a note the next search
+ranks wrong. Only fall back to the shape below when there is nothing to follow.
+
 Same shape the other skills read and write, so `/route` finds it and the vault stays one
 coherent set:
 
@@ -115,10 +120,12 @@ type: finding      # or concept / decision / gotcha / preference
 status: active
 created: <today>
 updated: <today>
-tags: [<2–3>]
+tags: [<2–3>]           # free-form, plural, kebab-case
+projects: [<repo or project slug>]   # omit when it belongs to no project
 session: <CATEGORY/slug, or the session id when unregistered>
 origin: learn-in-flight
-related: []
+mocs: []                # the Maps of Content this belongs under, when the vault keeps any
+related: []             # wikilinks to the notes this one builds on
 ---
 
 <One paragraph, context-free: the claim, then WHY it holds. A note that says "do X"
@@ -128,9 +135,13 @@ ages badly; "do X because Y fails when Z" survives.>
 Write to `<VAULT>/20-Notes/<id>-<kebab-title>.md` when that directory exists, else to the
 vault root — the layout is the user's, not ours.
 
+Fill `related:` with the notes you read in Step 3 that this one builds on, even when you
+did not extend them — a note nothing points at is reachable only by full-text luck, which
+is the failure the links exist to prevent.
+
 Then **link it in**, or it is invisible: prepend a row to `## Recently added` in
-`<VAULT>/INDEX.md` — `| <today> | [[<id>-<slug>]] | <tags> |`. An orphan note is one nobody
-finds; that failure mode is real and silent.
+`<VAULT>/INDEX.md` — `| <today> | [[<id>-<slug>]] | <tags> |`, newest first. An orphan note
+is one nobody finds; that failure mode is real and silent.
 
 ## Step 5 — Say it out loud, in one line
 

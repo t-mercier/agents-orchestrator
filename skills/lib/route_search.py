@@ -8,6 +8,7 @@ match" for its entire life. Arguments cannot be forgotten the way an export can.
 
     route_search.py notes    <query> <vault> [<vault>...]
     route_search.py areas    <query> <vault> [<vault>...]
+    route_search.py mocs     <query> <vault> [<vault>...]
     route_search.py sessions <query> [<root>...]     # roots default to the configured ones
     route_search.py selftest
 
@@ -23,6 +24,7 @@ import sys
 SKIP_DIRS = {".git", ".obsidian", ".archive", ".trash", "node_modules", ".stversions"}
 NOTES_DIRS = ("20-Notes", "notes")
 AREAS_DIRS = ("10-Areas", "areas")
+MOCS_DIRS = ("30-MOCs", "mocs", "MOCs")
 HEAD_CHARS = 800          # frontmatter + opening prose is where the identifying terms live
 MAX_RESULTS = 5
 
@@ -182,10 +184,17 @@ def selftest():
             "---\ntags: [billing]\n---\n# Invoice rounding\nbody\n")
         open(os.path.join(areas, "area-rendering.md"), "w").write(
             "# Area — Rendering\nCamera, tiles.\n")
+        mocs = os.path.join(tmp, "vault", "30-MOCs")
+        os.makedirs(mocs)
+        open(os.path.join(mocs, "moc-rendering.md"), "w").write(
+            "---\ntype: moc\n---\n# Map of Content — camera\n")
         # Skipped dirs must not be scanned.
         os.makedirs(os.path.join(tmp, "vault", ".obsidian"))
         open(os.path.join(tmp, "vault", ".obsidian", "camera.md"), "w").write("camera reset")
 
+        moc_files = md_files(os.path.join(tmp, "vault"), MOCS_DIRS)
+        checks.append(("prefers 30-MOCs/", all("30-MOCs" in f for f in moc_files), True))
+        checks.append(("the MOC is found", len(search_files(moc_files, terms_of("camera"))), 1))
         files = md_files(os.path.join(tmp, "vault"), NOTES_DIRS)
         checks.append(("prefers 20-Notes/", all("20-Notes" in f for f in files), True))
         checks.append(("2 notes found", len(files), 2))
@@ -263,9 +272,12 @@ def main():
         sys.exit(cmd_notes(query, rest))
     if cmd == "areas":
         sys.exit(cmd_notes(query, rest, AREAS_DIRS, "area"))
+    if cmd == "mocs":
+        sys.exit(cmd_notes(query, rest, MOCS_DIRS, "MOC"))
     if cmd == "sessions":
         sys.exit(cmd_sessions(query, rest))
-    print("usage: route_search.py notes|areas|sessions <query> ... | selftest", file=sys.stderr)
+    print("usage: route_search.py notes|areas|mocs|sessions <query> ... | selftest",
+          file=sys.stderr)
     sys.exit(2)
 
 

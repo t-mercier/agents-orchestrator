@@ -10,6 +10,26 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- **The knowledge notes follow one schema, written by one skill** — `/close-session` wrote a
+  whole session into `<vault>/sessions/<slug>.md`: no id, no frontmatter, no index row, so
+  the search could not rank it and nothing linked to it — a fifth copy of `notes.md` rather
+  than a distil. It now goes through `/learn` (one note per decision worth keeping,
+  `origin: close-session`), which is the single writer that knows the vault's layout and
+  extends an existing note instead of adding a near-duplicate. Promoted bullets are marked
+  in `notes.md` so the next close does not promote them twice.
+- **`/learn` honours the vault's own conventions** — a `README.md` or `CONVENTIONS.md` at the
+  vault root is the user's contract, so it is read and followed, frontmatter keys included,
+  before falling back to the built-in shape. That shape gains the keys a PARA +
+  Zettelkasten vault carries and the template omitted: `projects:`, `mocs:`, and a
+  `related:` filled from the notes read while searching — a note nothing points at is
+  reachable only by full-text luck.
+- **`/route` reads the index and the Maps of Content** — it searched the atomic notes and
+  the areas while ignoring `INDEX.md` and `30-MOCs/`, so `/learn` maintained an index that
+  nothing consumed. It now reads the index first (leaves before the tree is the wrong
+  order, and it is where an orphan note becomes visible) and searches the MOCs alongside
+  the notes. `route_search.py` gains a `mocs` mode; 16 selftests.
+
 ### Documentation
 - **The web page hands out builds directly** — it only ever linked to the repo, so someone
   who wanted the app had to find the releases page, then the right asset. Two download
