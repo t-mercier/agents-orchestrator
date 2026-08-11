@@ -11,6 +11,16 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- **`/skill-propose` fires in flight, and counts rewrite passes** — its criteria already
+  covered "the user corrected your approach", but the skill was reachable only from the
+  session close, so the strongest signal available went unnoticed while it was happening.
+  Measured on a real session: three rewrite passes of the same review comments, both
+  rejections traceable to gaps in the writing skill, and no proposal until the user asked
+  for one. It is now proactive, and a *second* rewrite pass of one output is a criterion in
+  its own right — a first attempt that followed the instructions and was still wrong means
+  the instructions are what is missing. A new step locates the defect: when the corrected
+  output came from a skill, that skill is the first suspect and the proposal is a patch to
+  it, quoting the passage that led into the mistake.
 - **The knowledge notes follow one schema, written by one skill** — `/close-session` wrote a
   whole session into `<vault>/sessions/<slug>.md`: no id, no frontmatter, no index row, so
   the search could not rank it and nothing linked to it — a fifth copy of `notes.md` rather
