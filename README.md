@@ -8,7 +8,7 @@
 
 [![Live site](https://img.shields.io/badge/%F0%9F%8C%90%20Live%20site-visit-9b8cff?style=for-the-badge)](https://t-mercier.github.io/ai-agents-orchestrator/)
 
-[![Version](https://img.shields.io/badge/version-0.6.1--alpha-9b8cff)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.7.0--alpha-9b8cff)](CHANGELOG.md)
 [![CI](https://img.shields.io/github/actions/workflow/status/t-mercier/ai-agents-orchestrator/ci.yml?branch=master)](https://github.com/t-mercier/ai-agents-orchestrator/actions)
 [![License: Source Available](https://img.shields.io/badge/license-Source%20Available-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-13+-000000?style=flat&logo=apple)](https://www.apple.com/macos/)
@@ -59,6 +59,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > ## What's new
 > Newest first — full history in the [changelog](CHANGELOG.md).
 >
+> - 🔗 **A PR you open mid-session attaches itself** — an opt-in hook reads the URL `gh pr create` prints and appends it to the session's notes, so it shows on the card without waiting for the next checkpoint. `bash scripts/install.sh --with-hooks`.
 > - 🧠 **The knowledge notes fill as you work** — `/learn` writes a note the moment something durable comes up, instead of waiting for a session close that often never happens. It extends an existing note rather than adding a near-duplicate, and announces every write in one line — no approval prompt, because a prompt at every insight would defeat the point.
 > - 🔗 **Links in the embedded terminal are clickable** — Claude Code prints a PR it just opened as an OSC 8 hyperlink; those are now clickable in the in-app terminal, with the target's scheme checked before anything is handed to the OS.
 > - 📋 **PRs and tickets listed in the detail panel** — each on its own row and clickable, behind a single **Edit** button instead of a pencil per field.
