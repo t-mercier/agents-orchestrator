@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 # Install the bundled session skills + seed the shared config.
 #
-#   bash scripts/install.sh           # install (won't overwrite existing skills)
-#   bash scripts/install.sh --force   # overwrite existing skills
+#   bash scripts/install.sh              # install (won't overwrite existing skills)
+#   bash scripts/install.sh --force      # overwrite existing skills
+#   bash scripts/install.sh --with-hooks # also copy the optional PR-attach hook
 #
 # Copies skills/* → ~/.claude/skills/, writes a default config if none exists, and
 # creates the category folders. Never touches your session data.
 set -euo pipefail
 shopt -s nullglob
 
-FORCE=0; [ "${1:-}" = "--force" ] && FORCE=1
+FORCE=0; HOOKS=0
+for arg in "$@"; do
+  case "$arg" in
+    --force) FORCE=1 ;;
+    --with-hooks) HOOKS=1 ;;
+  esac
+done
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILLS_SRC="$HERE/skills"
 SKILLS_DST="$HOME/.claude/skills"
@@ -74,6 +81,19 @@ python3 "$SKILLS_DST/lib/aoconfig.py" categories | while IFS= read -r cat; do
   base="$(python3 "$SKILLS_DST/lib/aoconfig.py" base "$cat")"
   mkdir -p "$base" && echo "  $base"
 done
+
+# 5. Optional PR-attach hook. Copying the script is safe; wiring it is not, so the
+# settings.json entry is printed for you to paste — this installer never edits the file
+# that decides which code Claude Code runs on your machine.
+if [ "$HOOKS" -eq 1 ]; then
+  mkdir -p "$HOME/.claude/hooks"
+  cp "$HERE/hooks/pr_attach.py" "$HOME/.claude/hooks/pr_attach.py"
+  echo
+  echo "installed hook script: ~/.claude/hooks/pr_attach.py"
+  echo "  To enable it, add this to the PostToolUse \"Bash\" hooks in ~/.claude/settings.json:"
+  echo '    { "type": "command", "command": "IN=$(cat); printf '"'"'%s'"'"' \"$IN\" | python3 \"$HOME/.claude/hooks/pr_attach.py\" 2>/dev/null; true" }'
+  echo "  It attaches a PR to the session notes the moment \`gh pr create\` opens it."
+fi
 
 echo
 if [ ${#STALE[@]} -gt 0 ]; then

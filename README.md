@@ -196,6 +196,16 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 
 Categories, note locations and knowledge-notes folders all come from your shared config, so the skills and the app stay in sync.
 
+### Optional: attach PRs automatically
+
+A session's pull requests are read from its `notes.md`, which only the skills above write — so a PR opened mid-session stays invisible until your next `/save-session`. The bundled `hooks/pr_attach.py` closes that gap: it attaches the URL the moment `gh pr create` prints it.
+
+```bash
+bash scripts/install.sh --with-hooks
+```
+
+That copies the script and prints the one-line entry to paste into the `PostToolUse` → `Bash` hooks of `~/.claude/settings.json`. Wiring is left to you on purpose — that file decides which code Claude Code runs on your machine, and nothing here edits it for you. The hook only ever *adds* a link, never replaces or removes one.
+
 > [!IMPORTANT]
 > **Working from a clone? `git pull` does not update your skills.** It updates the repo's `skills/`; the copies Claude Code actually loads live in `~/.claude/skills/`. And a plain install **keeps an existing skill untouched** — new skills arrive, but *changed* ones are skipped, so a shipped fix silently never reaches you. After any pull that touches skills:
 >
