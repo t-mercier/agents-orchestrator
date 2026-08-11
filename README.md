@@ -59,6 +59,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > ## What's new
 > Newest first — full history in the [changelog](CHANGELOG.md).
 >
+> - 🧠 **The knowledge notes fill as you work** — `/learn` writes a note the moment something durable comes up, instead of waiting for a session close that often never happens. It extends an existing note rather than adding a near-duplicate, and announces every write in one line — no approval prompt, because a prompt at every insight would defeat the point.
 > - 🔗 **Links in the embedded terminal are clickable** — Claude Code prints a PR it just opened as an OSC 8 hyperlink; those are now clickable in the in-app terminal, with the target's scheme checked before anything is handed to the OS.
 > - 📋 **PRs and tickets listed in the detail panel** — each on its own row and clickable, behind a single **Edit** button instead of a pencil per field.
 > - 📥 **Browse every untracked session** — the *Recent · unmanaged* list is no longer capped at what fits: page through all of them, or adopt one straight from its row.
@@ -190,6 +191,7 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/skill-propose` | Stage what this session taught as a new skill — or a patch to an existing one — in `~/.claude/skills-pending/`. Never writes to `skills/` |
 | `/skills-review` | The approval gate: list, diff, then approve or reject a staged proposal. The only path by which one goes live |
 | `/skills-curate` | Periodic pass over the whole set: refresh usage, report `active`/`stale`/`archived`, stage merges of overlapping skills |
+| `/learn` | Write one atomic note into this space's knowledge notes **the moment** something durable is learned — not at session close |
 | `/route <ticket \| topic>` | A **Context Brief before you investigate**: this space's knowledge notes + past session notes + your tracker, summarised. Read-only |
 
 Categories, note locations and knowledge-notes folders all come from your shared config, so the skills and the app stay in sync.
@@ -209,7 +211,12 @@ Categories, note locations and knowledge-notes folders all come from your shared
 
 Long sessions force the assistant to **compact** its own history — silently dropping older context until it loses the thread. This app keeps what matters in `notes.md` on disk instead: `/close-session` records the goal, decisions and next steps **plus the session id**; `/restart-session` loads all of it — and that id — into a fresh conversation, so the chain back to the original is never broken. Need the literal transcript? `claude --resume <id>` replays it verbatim.
 
-**And a second tier, across sessions.** A `notes.md` remembers *one* session; the decision that cost you an afternoon deserves to outlive it. Give a space a knowledge-notes folder and `/close-session` distils the high-signal decisions into it as atomic notes — marking the source bullet so the same one is never promoted twice. `/route <ticket | topic>` then reads that folder, your past session notes and — when a tracker is reachable — its tickets, to build a **Context Brief before you open the code**. It resolves *which* folder from the current session's space, so work and personal knowledge never bleed into each other.
+**And a second tier, across sessions.** A `notes.md` remembers *one* session; the decision that cost you an afternoon deserves to outlive it. Give a space a knowledge-notes folder and two things fill it: `/close-session` distils the session's high-signal decisions on the way out, and **`/learn` writes a note the moment something durable comes up** — which matters, because a session you never close teaches the next one nothing. `/learn` extends an existing note rather than adding a near-duplicate, and announces every write in one line; there is deliberately no approval prompt, since a prompt at every insight would defeat writing in flight.
+
+The skill ships, but the *trigger* has to be in front of the assistant at all times to fire on its own — so add this to your `~/.claude/CLAUDE.md`:
+
+> When something durable emerges mid-session — a preference or correction I stated, a stable fact about the environment, a gotcha with its workaround — invoke `/learn` then, not at the end. The test is: does writing this stop me repeating myself?
+ `/route <ticket | topic>` then reads that folder, your past session notes and — when a tracker is reachable — its tickets, to build a **Context Brief before you open the code**. It resolves *which* folder from the current session's space, so work and personal knowledge never bleed into each other.
 
 ```mermaid
 flowchart LR

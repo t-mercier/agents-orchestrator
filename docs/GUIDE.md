@@ -100,6 +100,7 @@ You run these inside Claude Code (the dashboard buttons trigger them for you). C
 | **`/skill-propose`** | Stages what this session taught as a reusable skill — or, preferably, a patch to one you already have. Only fires when something reusable actually came up. Writes to `~/.claude/skills-pending/`, never to `skills/`. |
 | **`/skills-review`** | Shows a staged proposal (full content, or a real diff) and promotes it only once you approve. Nothing becomes active any other way. |
 | **`/skills-curate`** | Occasional housekeeping over the whole set: refreshes per-skill usage from your transcripts, flags what has gone dormant, and proposes merging skills that should be one. Never deletes — archives. |
+| **`/learn`** | Records one durable fact — a preference you stated, an environment quirk, a gotcha and its workaround — into this space's knowledge notes, **as it happens**. Waiting for the session close means the write often never happens. |
 | **`/route <ticket \| topic>`** | A Context Brief *before* you investigate: this space's knowledge notes, your past session notes and — when a tracker is reachable — its tickets, summarised. Read-only. Run it at the start of a bug or an unfamiliar area, not after getting stuck. |
 
 ## A typical day
