@@ -835,10 +835,11 @@ async function saveEditRefs() {
   const bad = [...tickets.map(v => LINK_EDITORS.ticket.invalid(v)),
                ...prs.map(v => LINK_EDITORS.pr.invalid(v))].find(Boolean)
   if (bad) { if (err) { err.textContent = bad; err.hidden = false } return }
-  const results = await Promise.all([
-    LINK_EDITORS.ticket.save(editRefsNotes, tickets),
-    LINK_EDITORS.pr.save(editRefsNotes, prs),
-  ])
+  // Sequential, NOT Promise.all: both commands read-modify-write the same notes.md, so
+  // running them together made the second one start from the pre-edit content and drop
+  // the first one's change. The ticket write must see the PR write already applied.
+  const results = [await LINK_EDITORS.ticket.save(editRefsNotes, tickets)]
+  results.push(await LINK_EDITORS.pr.save(editRefsNotes, prs))
   const failed = results.find(r => r && r.ok === false)
   if (failed) { if (err) { err.textContent = failed.error || 'Could not save.'; err.hidden = false } return }
   editRefsModal().close()

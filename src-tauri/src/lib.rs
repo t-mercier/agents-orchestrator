@@ -673,13 +673,30 @@ fn set_window_bg(window: tauri::WebviewWindow, dark: bool) {
 /// data already flushed to the tmp file — a power loss between the rename and the
 /// delayed writeback could otherwise replace a good file with an empty one. The one
 /// atomic-write implementation (config::save uses it too).
+///
+/// The tmp name carries a pid + counter because the `#[tauri::command(async)]` writers
+/// run concurrently: two of them targeting the same notes.md used to share one fixed
+/// `.ao-tmp`, so the second truncated the first's tmp and then renamed a path the first
+/// had already moved away — surfacing as "No such file or directory (os error 2)".
+/// It stays a sibling of the target: rename is only atomic within one filesystem.
 pub(crate) fn atomic_write(path: &std::path::Path, body: &str) -> Result<(), String> {
     use std::io::Write;
-    let tmp = path.with_extension("ao-tmp");
-    let mut f = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
-    f.write_all(body.as_bytes()).map_err(|e| e.to_string())?;
-    f.sync_all().map_err(|e| e.to_string())?;
-    std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+    static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let n = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let tmp = path.with_extension(format!("ao-tmp.{}.{}", std::process::id(), n));
+    let write = || -> Result<(), String> {
+        let mut f = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
+        f.write_all(body.as_bytes()).map_err(|e| e.to_string())?;
+        f.sync_all().map_err(|e| e.to_string())?;
+        std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+    };
+    let res = write();
+    // Unique names never get reused, so a failure would otherwise leave the tmp behind
+    // for good — in the user's own notes folders.
+    if res.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    res
 }
 
 /// Local (`date`-derived) current stamp as `("YYYY-MM-DD", "HH:MM")`. Spawning `date`
@@ -1324,7 +1341,8 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{
-        category_root_dir, is_deletable_session_dir, is_pr_url, is_safe_branch, is_safe_category,
+        atomic_write, category_root_dir, is_deletable_session_dir, is_pr_url, is_safe_branch,
+        is_safe_category,
         is_safe_slug, is_ticket, is_valid_session_id, parse_usage, percent_encode, sanitize_session_name,
         set_frontmatter_links, slugify, stamp_archived, strip_archived, usage_view,
         validate_root_override,
@@ -1587,6 +1605,50 @@ mod tests {
         let v = vec!["FEAT-1".to_string(), "FEAT-2".to_string()];
         let out = set_frontmatter_links(FM, "ticket", "tickets", &v);
         assert!(out.contains("ticket: FEAT-1\ntickets:\n  - FEAT-2"));
+    }
+
+    /// The Edit-refs dialog writes both lists. Applied in sequence — the way the
+    /// renderer now does it — each one keeps the other's block; running them together
+    /// made the second start from the pre-edit content and drop the first's change.
+    #[test]
+    fn writing_tickets_then_prs_keeps_both() {
+        let t = vec!["FEAT-1".to_string()];
+        let p = vec!["https://github.com/o/r/pull/5".to_string()];
+        let out = set_frontmatter_links(
+            &set_frontmatter_links(FM, "ticket", "tickets", &t),
+            "pr_link", "pr_links", &p,
+        );
+        assert!(out.contains("ticket: FEAT-1"));
+        assert!(out.contains("pr_link: https://github.com/o/r/pull/5"));
+    }
+
+    /// Concurrent writers to the SAME file used to share one fixed `.ao-tmp`, so one of
+    /// them renamed a path the other had already moved away ("os error 2"). Unique tmp
+    /// names make every writer independent; one of them wins, none of them fails.
+    #[test]
+    fn concurrent_atomic_writes_do_not_collide() {
+        let dir = std::env::temp_dir().join(format!("ao-atomic-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let target = dir.join("notes.md");
+        std::fs::write(&target, "seed").unwrap();
+        let handles: Vec<_> = (0..8)
+            .map(|i| {
+                let t = target.clone();
+                std::thread::spawn(move || atomic_write(&t, &format!("body {i}")))
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap().expect("no writer should fail");
+        }
+        assert!(std::fs::read_to_string(&target).unwrap().starts_with("body "));
+        // No tmp left behind next to the user's notes.
+        let leftovers = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains("ao-tmp"))
+            .count();
+        assert_eq!(leftovers, 0);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
