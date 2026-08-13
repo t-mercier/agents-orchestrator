@@ -717,11 +717,11 @@ window._prStatus = window._prStatus || {}
 // it did. A missing module now costs the PR marks, not the app.
 const PR_FALLBACK = {
   GLYPH: {
-    open: '<circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/>',
-    draft: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-    merged: '<path d="M20 6 9 17l-5-5"/>',
-    closed: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    unknown: '<circle cx="12" cy="12" r="7" stroke-dasharray="3 3"/>',
+    open: '<circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/>',
+    draft: '<circle cx="12" cy="12" r="5.5"/>',
+    merged: '<path d="M6.5 12.5 10.5 16.5 17.5 8"/>',
+    closed: '<path d="M7.5 7.5 16.5 16.5"/><path d="M16.5 7.5 7.5 16.5"/>',
+    unknown: '<circle cx="12" cy="12" r="5.5" stroke-dasharray="2.4 2.6"/>',
   },
   WORD: { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' },
   stateOf: () => 'unknown',

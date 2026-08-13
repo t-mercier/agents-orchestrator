@@ -1256,11 +1256,13 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
    from one row to the next. */
 .pr-glyph {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 11px; flex: none;
+  width: 12px; flex: none;
 }
-.pr-glyph svg { width: 11px; height: 11px; display: block; stroke-width: 3; }
+/* stroke-width 2 in a 24 viewBox lands at ~0.9px on screen — crisp, not chunky.
+   The 3 it replaces was drawn for a 24px icon and read as a smear at this size. */
+.pr-glyph svg { width: 12px; height: 12px; display: block; stroke-width: 2; }
 /* Inside a chip the word carries the meaning, so the mark can be smaller. */
-.pr-chip .pr-glyph svg { width: 10px; height: 10px; }
+.pr-chip .pr-glyph svg { width: 11px; height: 11px; }
 
 /* Detail panel (mock B): a labelled chip per PR, so nothing has to be learned. */
 .pr-list { display: flex; flex-direction: column; gap: 5px; }
@@ -1282,7 +1284,7 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
    the same shape the toolbar pill shows, so both read as one vocabulary. */
 /* Fixed width so a row WITHOUT a state glyph still occupies the same box as one with:
    otherwise the ids after it step left and right down the list. */
-.menu-mark { display: inline-flex; align-items: center; gap: 3px; flex: none; width: 28px; }
+.menu-mark { display: inline-flex; align-items: center; gap: 4px; flex: none; width: 30px; }
 .menu-mark svg { width: 14px; height: 14px; display: block; flex: none; }
 .board-menu-item .board-menu-name { font-variant-numeric: tabular-nums; }
 /* The tracker's own status word, trailing the row and never stealing from the id. */

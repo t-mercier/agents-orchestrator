@@ -9,16 +9,21 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api
   else root.CSMPrState = api
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  // SVG paths, not Unicode characters. `✎` and `◌` are dingbats absent from SF Pro, so
-  // macOS either substituted another face or drew nothing at all — draft and un-synced
-  // simply had no visible mark. Every other icon in this app is an SVG for the same
-  // reason. The caller wraps these in a 24×24 viewBox.
+  // SVG paths, not Unicode characters: `✎` and `◌` are dingbats absent from SF Pro, so
+  // macOS substituted another face or drew nothing at all. Every other icon here is an
+  // SVG for the same reason. The caller wraps these in a 24×24 viewBox.
+  //
+  // Drawn FOR ~11px, not scaled down from a 24px icon set: short strokes, a wide gap
+  // between the arms of the cross and the ends of the tick, and a filled disc small
+  // enough not to read as a blob. A detailed glyph (a pencil, say) turns to mush at
+  // this size — hence a plain ring for draft, which also stays distinct from the dotted
+  // ring of un-synced.
   const GLYPH = {
-    open: '<circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/>',
-    draft: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-    merged: '<path d="M20 6 9 17l-5-5"/>',
-    closed: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    unknown: '<circle cx="12" cy="12" r="7" stroke-dasharray="3 3"/>',
+    open: '<circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/>',
+    draft: '<circle cx="12" cy="12" r="5.5"/>',
+    merged: '<path d="M6.5 12.5 10.5 16.5 17.5 8"/>',
+    closed: '<path d="M7.5 7.5 16.5 16.5"/><path d="M16.5 7.5 7.5 16.5"/>',
+    unknown: '<circle cx="12" cy="12" r="5.5" stroke-dasharray="2.4 2.6"/>',
   }
   const WORD = { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' }
 
@@ -56,8 +61,8 @@
   // ── Tickets ──────────────────────────────────────────────────────────────────
   // A tracker's statuses are per-project ("Triaged", "In Review", "Won't Do"), so the
   // label shown is always the raw one. Only the COLOUR is folded, into the same four
-  // families as a PR — one grammar for both: ● it is moving, ✔ it is finished,
-  // ✕ abandoned, ✎ still being written, ◌ nothing yet.
+  // families as a PR — one grammar for both: a disc means it is moving, a tick that it
+  // is finished, a cross abandoned, a ring still being written, a dotted ring nothing yet.
   //
   // Matched on whole words so "Done" hits and "Doneness" does not, and longest-family
   // first so "In Review" is active rather than falling through to unknown.
