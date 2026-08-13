@@ -1228,6 +1228,16 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 .archive-btn:hover { opacity: 1 !important; color: var(--text-primary); }
 .pause-btn:hover { opacity: 1 !important; color: var(--text-primary); }
 .close-btn:hover { opacity: 1 !important; color: var(--status-busy, var(--accent)); }
+/* A close that wraps up first takes up to a minute. The button is hover-revealed, so
+   without this the only feedback vanishes the moment the pointer moves away. */
+.close-btn.busy {
+  opacity: 1 !important;
+  color: var(--status-busy, var(--accent));
+  cursor: progress;
+  animation: close-busy-pulse 1.1s ease-in-out infinite;
+}
+@keyframes close-busy-pulse { 50% { opacity: 0.35 !important; } }
+@media (prefers-reduced-motion: reduce) { .close-btn.busy { animation: none; } }
 /* Trash button (archived sessions only) — same affordance as archive, red on hover (destructive). */
 .delete-btn {
   display: inline-flex; align-items: center; background: none; border: none;

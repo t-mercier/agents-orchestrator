@@ -182,12 +182,14 @@ function pinBtn(s) {
 
 // Lifecycle granularity: Running/Stale → Close → Closed → Archive → Archived.
 // Close button — only on STALE sessions (in the Running tab: terminal gone, never
-// /close-session'd). Click → confirm → close_session (stamps a close marker → Closed).
-// Active (alive) sessions close via the terminal's "End session ✕"; the stale badge stays
-// in the Running tab so un-closed sessions are still trackable until you close them.
+// /close-session'd). Click → confirm → a real wrap-up (wrap_session resumes the session
+// headless so /wrap-session can summarise it), falling back to the plain close marker.
+// Only stale: a session with a live terminal must close through its own "End session ✕",
+// since resuming a running conversation forks it.
 function closeBtn(s) {
   if (!s.notesPath || s.state !== 'stale') return ''
   return `<button class="close-btn" data-close-notes="${escapeHtml(s.notesPath)}" data-close-name="${escapeHtml(s.name || '')}"
+           data-close-sid="${escapeHtml(canResume(s) ? (s.sessionId || '') : '')}" data-close-cwd="${escapeHtml(s.cwd || '')}"
            title="Close this session (move to Closed)" aria-label="Close this session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg></button>`
 }
 
@@ -941,7 +943,12 @@ function resumeBtn(s) {
   return `<button class="act-verb primary" data-open-resume data-session="${escapeHtml(s.sessionId)}" data-cwd="${escapeHtml(s.cwd || '')}" data-notes="${escapeHtml(s.notesPath || '')}"
            data-tip="Resume this session">${svgIcon('<polygon points="6 3 20 12 6 21 6 3"/>')}Resume</button>`
 }
+// Restart rebuilds the session from its notes instead of its transcript. It is only
+// offered when Resume is NOT possible (no session id, or the .jsonl is gone) — where
+// Resume works it is strictly better, and a compaction already resets the context, so
+// two buttons only made the choice harder.
 function restartBtn(s) {
+  if (canResume(s)) return ''
   const slug = slugOf(s)
   if (!slug) return ''
   return `<button class="act-verb" data-open-restart data-restore-slug="${escapeHtml(slug)}" data-restore-sid="${escapeHtml(s.sessionId || '')}" data-cwd="${escapeHtml(s.cwd || '')}" data-notes="${escapeHtml(s.notesPath || '')}"
@@ -1317,26 +1324,41 @@ function installDelegatedHandlers() {
     // Archive — confirm, then archive_session (moves Closed → Archived). Must come
     // before the card-select handler (it's inside a card); stopPropagation so the
     // card isn't selected by the same click.
-    // Close (stale → Closed) — confirm, then stamp a close marker via close_session.
+    // Close (stale → Closed). With a resumable session id, wrap_session resumes it
+    // headless so /wrap-session writes a real summary — that takes a while, hence the
+    // spinner. Without one (transcript gone), only the plain marker is possible.
     const close = e.target.closest('.close-btn[data-close-notes]')
     if (close) {
       e.stopPropagation()
       const notes = close.dataset.closeNotes
       const name = close.dataset.closeName || 'this session'
+      const sid = close.dataset.closeSid || ''
+      const cwd = close.dataset.closeCwd || ''
+      const canWrap = !!(sid && cwd && window.api.wrapSession)
       if (window.confirmAction && window.api.closeSession) {
         window.confirmAction({
           title: 'Close session',
-          body: `Close "${name}"? It moves to the Closed tab. (No AI summary — for a full wrap-up, run /close-session in the session.)`,
+          body: canWrap
+            ? `Close "${name}"? It gets summarised into its notes first — that takes up to a minute — then moves to the Closed tab.`
+            : `Close "${name}"? Its transcript is gone, so it moves to the Closed tab without a summary.`,
           confirmLabel: 'Close',
         }).then(choice => {
           if (choice !== 'confirm') return
-          window.api.closeSession(notes).then(res => {
+          // The wrap is slow: disable the button so a second click can't start a
+          // second headless resume of the same session.
+          close.disabled = true
+          close.classList.add('busy')
+          const done = (res) => {
+            close.disabled = false
+            close.classList.remove('busy')
             if (res && res.ok) {
               if (window.refreshSessions) window.refreshSessions()
             } else if (window.confirmAction) {
               window.confirmAction({ title: '⚠️ Close failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
             }
-          })
+          }
+          if (canWrap) window.api.wrapSession(notes, sid, cwd).then(done)
+          else window.api.closeSession(notes).then(done)
         })
       }
       return

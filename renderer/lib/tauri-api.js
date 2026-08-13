@@ -119,6 +119,13 @@
     // /close-session produced no fresh wrap-up). Moves the session to Closed.
     closeSession: (notesPath) =>
       invoke('close_session', { notesPath: notesPath || '' }).then(() => ({ ok: true })).catch((e) => ({ ok: false, error: String(e) })),
+    // Wrap up a session for real, without opening a terminal: resumes it headless and
+    // lets /wrap-session write the summary. Slow by nature (it re-reads the whole
+    // conversation) and always ends Closed — it falls back to the plain marker itself.
+    wrapSession: (notesPath, sessionId, cwd) =>
+      invoke('wrap_session', { notesPath: notesPath || '', sessionId: sessionId || '', cwd: cwd || '' })
+        .then((summary) => ({ ok: true, summary: String(summary || '') }))
+        .catch((e) => ({ ok: false, error: String(e) })),
 
     // ── Session skills installer (src-tauri/src/skills.rs) ──
     // status: which bundled skills are already in ~/.claude/skills (drives the banner).

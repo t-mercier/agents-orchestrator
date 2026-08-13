@@ -1088,6 +1088,95 @@ fn close_session(notes_path: String) -> Result<(), String> {
     atomic_write(&abs, &stamp_archived(&content, &line))
 }
 
+/// How long a headless wrap may take before we give up on it and stamp the plain marker.
+/// A wrap re-reads the whole conversation, so a long session is legitimately slow; the
+/// ceiling only exists so a hung `claude` can't leave the button spinning forever.
+const WRAP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+
+/// Wrap up a session the way `/close-session` would, but with nobody watching: resume it
+/// with `--print` and let `/wrap-session` write the real summary into notes.md.
+///
+/// `--resume` runs the conversation under a NEW session id, so the skill cannot resolve
+/// "the current session" itself — notes.md and the ORIGINAL id are passed as arguments,
+/// and the close marker names the original. `--permission-mode acceptEdits` is required:
+/// the skill edits notes.md, and in `--print` there is no one to answer a prompt.
+///
+/// Always leaves the session Closed. If the wrap fails, times out, or returns without
+/// having stamped the history, `close_session`'s plain marker is written instead — a
+/// session the user asked to close must never stay stale because a summary didn't happen.
+#[tauri::command(async)]
+fn wrap_session(notes_path: String, session_id: String, cwd: String) -> Result<String, String> {
+    let abs = notes_md_under_root(&notes_path)?;
+    if !is_valid_session_id(&session_id) {
+        return Err(format!("not a session id: {session_id}"));
+    }
+    if !std::path::Path::new(&cwd).is_dir() {
+        return Err(format!("no such working directory: {cwd}"));
+    }
+    let fallback = || close_session(notes_path.clone()).map(|_| {
+        "Closed. The summary step did not complete, so a plain close marker was written."
+            .to_string()
+    });
+
+    // Through a login shell: launched from Finder, the app's PATH does not contain
+    // `claude` (same reason pty.rs spawns `$SHELL -ilc`).
+    let inner = format!(
+        "cd {} && claude --resume {} --model {} --permission-mode acceptEdits -p {}",
+        pty::shell_quote(&cwd),
+        pty::shell_quote(&session_id),
+        pty::shell_quote(pty::CLAUDE_MODEL),
+        pty::shell_quote(&format!("/wrap-session {} {}", abs.display(), session_id)),
+    );
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    let mut child = match std::process::Command::new(&shell)
+        .args(["-ilc", &inner])
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(_) => return fallback(),
+    };
+
+    let start = std::time::Instant::now();
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if start.elapsed() < WRAP_TIMEOUT => {
+                std::thread::sleep(std::time::Duration::from_millis(250));
+            }
+            // Timed out, or the wait itself failed: kill it and stamp the marker
+            // ourselves rather than leave the session stale.
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return fallback();
+            }
+        }
+    }
+    let summary = child
+        .wait_with_output()
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+
+    // Trust the file, not the exit code: the skill may report success having skipped the
+    // history line, and that line is the only thing that actually means "Closed".
+    let closed_today = std::fs::read_to_string(&abs)
+        .ok()
+        .map(|c| reader::session_history_info(&c))
+        .zip(local_date_time())
+        .is_some_and(|((status, date), (today, _))| {
+            status == "closed" && date.as_deref() == Some(today.as_str())
+        });
+    if !closed_today {
+        return fallback();
+    }
+    // The skill's confirmation is one line by contract; keep the last one in case the
+    // shell printed anything ahead of it.
+    Ok(summary.lines().last().unwrap_or("Closed.").trim().to_string())
+}
+
 /// Parse statusline-cache.json (or any JSON) into a serde_json Value.
 /// Valid JSON object → the object; anything else (garbage, scalar values) → Null.
 fn parse_usage(content: &str) -> Value {
@@ -1317,6 +1406,7 @@ pub fn run() {
             set_tickets,
             notes_closed_since,
             close_session,
+            wrap_session,
             can_reveal_terminal,
             reveal_terminal,
             get_usage,
