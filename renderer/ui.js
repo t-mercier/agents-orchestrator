@@ -821,10 +821,14 @@ function openLinkMenu(anchor, menu) {
   const editLabel = menu.kind === 'pr' ? 'Add / edit PRs…' : 'Add / edit tickets…'
   pop.innerHTML =
     `<div class="board-menu-head">${escapeHtml(menu.head)}</div>` +
+    // Each row leads with the same mark the toolbar shows — the source icon tinted by
+    // state, with its glyph. One vocabulary in both places, so the picker confirms what
+    // the pill already said instead of restating it in words.
     menu.items.map((it, i) =>
       `<button class="board-menu-item" data-link-open="${i}"${it.url ? '' : ' disabled'}>` +
       (it.state
-        ? `<span class="pr-chip pr-${it.state}"><span class="pr-glyph">${PR_GLYPH[it.state]}</span>${PR_WORD[it.state]}</span>`
+        ? `<span class="menu-mark pr-${it.state}" title="${PR_WORD[it.state]}">` +
+          `${menu.kind === 'pr' ? ICON_GITHUB : ICON_TICKET}<span class="pr-glyph">${PR_GLYPH[it.state]}</span></span>`
         : `<span class="board-menu-check">›</span>`) +
       `<span class="board-menu-name">${escapeHtml(it.label)}</span></button>`
     ).join('') +

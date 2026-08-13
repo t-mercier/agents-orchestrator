@@ -1267,8 +1267,11 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 .pr-synced { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
 /* Sync lives in the actions row; .act carries its shape, this only marks it working. */
 .act.busy { cursor: progress; color: var(--accent); animation: close-busy-pulse 1.1s ease-in-out infinite; }
-/* In the link picker the chip leads the row, replacing the › marker. */
-.board-menu-item .pr-chip { flex: none; }
+/* In the link picker the tinted source mark leads the row, replacing the › marker —
+   the same shape the toolbar pill shows, so both read as one vocabulary. */
+.menu-mark { display: inline-flex; align-items: center; gap: 3px; flex: none; }
+.menu-mark svg { width: 14px; height: 14px; display: block; }
+.board-menu-item .board-menu-name { font-variant-numeric: tabular-nums; }
 
 /* Trash button (archived sessions only) — same affordance as archive, red on hover (destructive). */
 .delete-btn {
