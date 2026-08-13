@@ -310,6 +310,7 @@ html, body {
    specificity to beat the generic `.modal-field input` rule (else its padding
    distorts the circle into an oval). */
 .settings-cat-row .cat-color,
+.settings-col-row .col-color,
 .modal-field .accent-picker {
   width: 28px;
   height: 28px;
@@ -322,8 +323,10 @@ html, body {
   overflow: hidden;
 }
 .settings-cat-row .cat-color::-webkit-color-swatch-wrapper,
+.settings-col-row .col-color::-webkit-color-swatch-wrapper,
 .modal-field .accent-picker::-webkit-color-swatch-wrapper { padding: 0; }
 .settings-cat-row .cat-color::-webkit-color-swatch,
+.settings-col-row .col-color::-webkit-color-swatch,
 .modal-field .accent-picker::-webkit-color-swatch { border: none; border-radius: 50%; }
 
 /* Settings appearance rows: "Theme  [toggle]" / "Accent color  ●" on one line. */
@@ -366,10 +369,6 @@ html, body {
 .settings-col-row .col-name:focus { border-color: var(--accent); }
 .settings-col-row .icon-btn[disabled] { opacity: 0.3; cursor: default; }
 .settings-col-row.col-hidden .col-name { opacity: 0.45; text-decoration: line-through; }
-/* Per-column title colour — a round dot (like the accent/category pickers). */
-.settings-col-row .col-color { width: 24px; height: 24px; padding: 0; border: 0.5px solid var(--card-border); border-radius: 50%; background: none; cursor: pointer; flex-shrink: 0; overflow: hidden; }
-.settings-col-row .col-color::-webkit-color-swatch-wrapper { padding: 0; }
-.settings-col-row .col-color::-webkit-color-swatch { border: none; border-radius: 50%; }
 
 /* ===== Kanban Board ===== */
 /* ── Kanban board ── */

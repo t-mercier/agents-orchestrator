@@ -37,21 +37,19 @@
   // ── Board column colours: a seed (reuses the Look swatches) + a scheme ──
   function renderBoardSeed() {
     const grid = $('set-board-seed')
-    if (!grid || !window.CSM_LOOKS || !window.CSMBoard) return
+    if (!grid || !window.CSM_LOOKS || !window.CSM_LOOK_CARDS || !window.CSMBoard) return
     const st = CSMBoard.load()
     const seed = (st.colorSeed || '').toLowerCase()
     const matchesLook = window.CSM_LOOKS.some(L => L.accent.toLowerCase() === seed)
-    const card = (val, name, swatch) =>
-      `<button type="button" class="look-card" data-seed="${val}" title="${name}">${swatch}<span class="look-name">${name}</span></button>`
-    const looks = window.CSM_LOOKS.map(L => card(L.accent, L.name, `<span class="look-swatch" style="background:${L.accent}"></span>`)).join('')
-    const none = card('', 'None', '<span class="look-swatch" style="background:rgba(var(--tint),0.05)"></span>')
-    // Custom = a label wrapping a real colour input, so the native picker pops AT the card.
+    // Shared with Appearance and Category colours (CSM_LOOK_CARDS): this panel used to
+    // draw flat colour blocks of its own, which is the whole reason it read as a
+    // different app.
+    grid.innerHTML = window.CSM_LOOK_CARDS({
+      attr: 'seed', valueOf: (L) => L.accent, none: true, customInputClass: 'seed-custom-input',
+    })
     const cv = (seed && !matchesLook) ? st.colorSeed : window.CSM_COLORS.accent
-    const custom = `<label class="look-card look-custom" data-seed="custom" title="Custom seed">
-      <span class="look-swatch look-swatch-custom"><i></i></span><span class="look-name">Custom</span>
-      <input type="color" class="seed-custom-input" value="${cv}">
-    </label>`
-    grid.innerHTML = none + looks + custom
+    const customInput = grid.querySelector('.seed-custom-input')
+    if (customInput) customInput.value = cv
     grid.querySelectorAll('.look-card').forEach(b => {
       const v = b.dataset.seed
       const active = v === '' ? !seed : v === 'custom' ? (!!seed && !matchesLook) : v.toLowerCase() === seed

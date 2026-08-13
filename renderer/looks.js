@@ -26,3 +26,34 @@ window.CSM_COLORS = Object.freeze({
   newCategory: '#8fd9ff',                   // colour given to a freshly added category
   neutral:     '#8a8f98',                   // grey fallback for unknown/invalid colours
 })
+
+// The look-card grid, rendered once for the three places that offer the same choice:
+// Appearance (the look itself), Category colours and Board column colours. It used to be
+// copy-pasted per module, and the copies drifted — the board drew flat colour blocks
+// while the other two drew a tinted card with the accent as an inner dot, which is why
+// that one panel looked like it belonged to a different app.
+//
+// `attr` is the data- attribute each caller keys its click handler on ('look',
+// 'cat-seed', 'board-seed'); `valueOf` turns a look into that attribute's value.
+window.CSM_LOOK_CARDS = function lookCards({ attr, valueOf, none = false, custom = true, customInputClass = '' }) {
+  const card = (val, name, swatch) =>
+    `<button type="button" class="look-card" data-${attr}="${val}" title="${name}">${swatch}<span class="look-name">${name}</span></button>`
+  // The tint reads stronger in a small card than as the live wash, or it vanishes.
+  const cards = window.CSM_LOOKS.map((L) => {
+    const bg = L.tintA ? `rgba(${L.tint}, ${Math.min(0.16, L.tintA * 2.6)})` : 'rgba(var(--tint), 0.05)'
+    return card(valueOf(L), L.name, `<span class="look-swatch" style="background:${bg}"><i style="background:${L.accent}"></i></span>`)
+  }).join('')
+  const noneCard = none
+    ? card('', 'None', '<span class="look-swatch" style="background:rgba(var(--tint),0.05)"><i style="background:rgba(var(--tint),0.18)"></i></span>')
+    : ''
+  // Custom wraps a real colour input in a <label>, so the native picker opens AT the card.
+  const customCard = !custom ? '' : customInputClass
+    ? `<label class="look-card look-custom" data-${attr}="custom" title="Custom seed">
+        <span class="look-swatch look-swatch-custom"><i></i></span><span class="look-name">Custom</span>
+        <input type="color" class="${customInputClass}" value="${window.CSM_COLORS.accent}">
+      </label>`
+    : `<button type="button" class="look-card look-custom" data-${attr}="custom" title="Custom — pick your own accent">
+        <span class="look-swatch look-swatch-custom"><i></i></span><span class="look-name">Custom</span>
+      </button>`
+  return noneCard + cards + customCard
+}

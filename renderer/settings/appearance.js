@@ -10,20 +10,8 @@
   // snapshot. Category chip colours are untouched (looks are ambiance, not a recolour).
   function renderLooks() {
     const grid = $('look-grid')
-    if (!grid || !window.CSM_LOOKS) return
-    const cards = window.CSM_LOOKS.map(L => {
-      // Show the tint a bit stronger in the tiny card than the live wash, so it reads.
-      const bg = L.tintA ? `rgba(${L.tint}, ${Math.min(0.16, L.tintA * 2.6)})` : 'rgba(var(--tint), 0.05)'
-      return `<button type="button" class="look-card" data-look="${L.id}" title="${L.name}">
-        <span class="look-swatch" style="background:${bg}"><i style="background:${L.accent}"></i></span>
-        <span class="look-name">${L.name}</span>
-      </button>`
-    }).join('')
-    const custom = `<button type="button" class="look-card look-custom" data-look="custom" title="Custom — pick your own accent">
-      <span class="look-swatch look-swatch-custom"><i></i></span>
-      <span class="look-name">Custom</span>
-    </button>`
-    grid.innerHTML = cards + custom
+    if (!grid || !window.CSM_LOOKS || !window.CSM_LOOK_CARDS) return
+    grid.innerHTML = window.CSM_LOOK_CARDS({ attr: 'look', valueOf: (L) => L.id })
   }
   function highlightActiveLook(id) {
     const grid = $('look-grid')
