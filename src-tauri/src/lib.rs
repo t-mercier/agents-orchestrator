@@ -407,7 +407,14 @@ fn start_session(
             format!("cd {} && git checkout {} -- && {}", cd, pty::shell_quote(branch), claude)
         }
     } else {
-        let launch_dir = category_root_dir(&cfg, cat_def);
+        // The category's own folder, not the space root — starting in the root hands the
+        // whole of it to the session, and for a space rooted at `~` that is the entire
+        // home directory (a macOS file-access prompt per protected folder). Falls back to
+        // the root when the category folder does not exist yet, so a launch never breaks.
+        let root = category_root_dir(&cfg, cat_def);
+        let in_category = format!("{root}/{category}");
+        let launch_dir =
+            if std::path::Path::new(&in_category).is_dir() { in_category } else { root };
         format!("cd {} && {}", pty::shell_quote(&launch_dir), claude)
     };
     if embedded {
@@ -716,7 +723,7 @@ fn local_date_time() -> Option<(String, String)> {
 /// Every configured root, canonicalized (v2 `roots` list only).
 /// Non-existent roots drop out (canonicalize fails). Shared by the confinement checks so
 /// the "what counts as a root" list lives once.
-fn configured_roots() -> Vec<std::path::PathBuf> {
+pub(crate) fn configured_roots() -> Vec<std::path::PathBuf> {
     let cfg = config::load();
     let mut roots: Vec<String> = Vec::new();
     if let Some(arr) = cfg.get("roots").and_then(serde_json::Value::as_array) {
