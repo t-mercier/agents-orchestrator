@@ -33,7 +33,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
   distinction the project actually works with. Only the *colour* is folded, into the same
   families as a PR: one grammar for both — moving, finished, abandoned, in draft, nothing
   yet. The status comes from a `ticket_states:` frontmatter list written by the session
-  skills, so the app holds no tracker credentials.
+  skills, so the app holds no tracker credentials. It shows on the icon, in the picker,
+  and as a chip per ticket in the detail panel, beside the PRs.
 - **Close wraps a stale session up for real, without opening a terminal** — it used to
   stamp a marker and nothing else, landing the session in Closed with no summary and no PR
   attached. It now resumes the session headless and lets the new `/wrap-session` write the

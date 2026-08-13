@@ -29,7 +29,7 @@ const CONFIG = {
 const S = (o) => {
   const dir = `/Users/dev/work/${o.category}/${o.name}`
   return Object.assign({
-    sessionId: o.name, notesPath: `${dir}/notes.md`, cwd: dir, worktree: dir,
+    sessionId: o.name, notesPath: `${dir}/notes.md`, cwd: dir,
     state: 'active', status: 'idle', root: 'Work', entrypoint: 'cli',
     updatedAt: mins(3), lastActivityAt: mins(3), resumable: true,
   }, o)
@@ -43,7 +43,8 @@ const RUNNING = [
       nextSteps: '1. Wire the address step to the new validation hook\n2. Add the express-pay buttons\n3. Smoke-test on mobile widths',
       prLink: 'https://github.com/acme/storefront/pull/1842',
       prLinks: ['https://github.com/acme/storefront/pull/1842', 'https://github.com/acme/storefront/pull/1851'],
-      tickets: ['FEAT-1842', 'FEAT-1863'] }),
+      tickets: ['FEAT-1842', 'FEAT-1863'],
+      ticketStates: ['FEAT-1842: In Review', 'FEAT-1863: In Progress'] }),
   S({ name: 'search-suggest', category: 'FEAT', ticket: 'FEAT-1907', status: 'waiting',
       gitBranch: 'feat/search-suggest', updatedAt: mins(6), lastActivityAt: mins(6),
       goal: 'Type-ahead suggestions on the catalogue search box.',
@@ -64,7 +65,8 @@ const RUNNING = [
       goal: 'Review the payments retry wrapper before it ships.',
       lastSummary: 'Summarised the diff. The retry wrapper looks solid, two edge cases to raise.',
       nextSteps: '1. Walk the retry path, then leave comments on the webhook handler',
-      prLink: 'https://github.com/acme/storefront/pull/2091' }),
+      prLink: 'https://github.com/acme/storefront/pull/2091',
+      ticketStates: ['REV-118: In Review'] }),
   S({ name: 'bump-deps', category: 'CHORE', status: 'busy',
       gitBranch: 'chore/q2-deps', updatedAt: mins(4), lastActivityAt: mins(4),
       goal: 'Quarterly dependency bump.',
@@ -149,6 +151,18 @@ const RESULTS = {
   can_reveal_terminal: false,
   discover_sessions: [],
   notes_closed_since: false,
+  // What a Sync would have left behind. Synthetic like the rest — no network here.
+  get_pr_status: {
+    'https://github.com/acme/storefront/pull/1842': {
+      state: 'merged', title: 'feat(checkout): single-page wizard shell', checkedAt: '2026-08-13 14:05',
+    },
+    'https://github.com/acme/storefront/pull/1851': {
+      state: 'open', title: 'feat(checkout): express-pay buttons', checkedAt: '2026-08-13 14:05',
+    },
+    'https://github.com/acme/storefront/pull/2091': {
+      state: 'open', title: 'fix(payments): retry the webhook on a 5xx', checkedAt: '2026-08-13 14:05',
+    },
+  },
 }
 window.__PTY_HANDLERS__ = {}
 window.__TAURI__ = {

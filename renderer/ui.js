@@ -102,6 +102,27 @@ function refLinks(values, hrefOf, labelOf = (v) => v) {
   }).join('<span class="ref-sep">·</span>')
 }
 
+// The tickets, one per row with the tracker's own status word — the same shape as the
+// PR list below. A ticket whose status we do not have keeps the plain link: inventing a
+// chip that says "unknown" would add a column of nothing.
+function ticketStateRows(s) {
+  const tickets = ticketsOf(s)
+  const anyStatus = tickets.some(t => ticketStatusOf(s, t))
+  if (!anyStatus) return refLinks(tickets, ticketUrl)
+  return `<div class="pr-list">` + tickets.map(t => {
+    const word = ticketStatusOf(s, t)
+    const fam = ticketFamilyOf(s, t)
+    const chip = word
+      ? `<span class="pr-chip pr-${fam}"><span class="pr-glyph">${svgIcon(PR_GLYPH[fam])}</span>${escapeHtml(word)}</span>`
+      : '<span class="pr-chip pr-unknown">—</span>'
+    const href = ticketUrl(t)
+    const label = href
+      ? `<button class="ref-link" data-url="${escapeHtml(href)}" title="${escapeHtml(t)}">${escapeHtml(t)}</button>`
+      : `<span class="ref-plain">${escapeHtml(t)}</span>`
+    return `<div class="pr-row">${chip}${label}</div>`
+  }).join('') + `</div>`
+}
+
 // The detail panel's PR list (mock B): one labelled chip per PR, and the age of what you
 // are reading. The age is not a nicety — Sync is manual, so every state on screen is a
 // cached answer, and a stale one you believe is live is worse than no state at all.
@@ -147,7 +168,7 @@ function buildMetaRows(s, isHistorical) {
     s.category ? metaRow('Category', escapeHtml(s.category)) : '',
     // Tickets and PRs get their own rows: this is where a session's full reference list
     // is spelled out (a card only has room for "FEAT-1 +1"), and where you click through.
-    ticketsOf(s).length ? metaRow(ticketsOf(s).length > 1 ? 'Tickets' : 'Ticket', refLinks(ticketsOf(s), ticketUrl)) : '',
+    ticketsOf(s).length ? metaRow(ticketsOf(s).length > 1 ? 'Tickets' : 'Ticket', ticketStateRows(s)) : '',
     prLinksOf(s).length ? metaRow(prLinksOf(s).length > 1 ? 'PRs' : 'PR', prStateRows(s)) : '',
     s.root ? metaRow('Space', escapeHtml(String(s.root))) : '',
     isHistorical && s.startedAt ? metaRow('Started', escapeHtml(s.startedAt)) : '',
