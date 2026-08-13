@@ -682,10 +682,21 @@ function ticketChip(s) {
 // when the truth is "we have not asked".
 window._prStatus = window._prStatus || {}
 
-const PR_GLYPH = window.CSMPrState.GLYPH
-const PR_WORD = window.CSMPrState.WORD
-const prStateOf = (url) => window.CSMPrState.stateOf(window._prStatus, url)
-const prStateOfSession = (s) => window.CSMPrState.sessionState(window._prStatus, prLinksOf(s))
+// Read through a getter, never captured at load time. A top-level `window.CSMPrState.X`
+// here throws when the script tags are ordered wrong, and since this file defines the
+// whole renderer, that one TypeError empties the entire window — which is exactly what
+// it did. A missing module now costs the PR marks, not the app.
+const PR_FALLBACK = {
+  GLYPH: { open: '●', draft: '◍', merged: '✔', closed: '✕', unknown: '◌' },
+  WORD: { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' },
+  stateOf: () => 'unknown',
+  sessionState: () => 'unknown',
+}
+const prState = () => window.CSMPrState || PR_FALLBACK
+const PR_GLYPH = PR_FALLBACK.GLYPH
+const PR_WORD = PR_FALLBACK.WORD
+const prStateOf = (url) => prState().stateOf(window._prStatus, url)
+const prStateOfSession = (s) => prState().sessionState(window._prStatus, prLinksOf(s))
 
 // The GitHub icon for a session's PRs, tinted by state (mock A): one link opens straight
 // away, several show a count badge and open the picker.
