@@ -716,7 +716,7 @@ window._prStatus = window._prStatus || {}
 // whole renderer, that one TypeError empties the entire window — which is exactly what
 // it did. A missing module now costs the PR marks, not the app.
 const PR_FALLBACK = {
-  GLYPH: { open: '●', draft: '◍', merged: '✔', closed: '✕', unknown: '◌' },
+  GLYPH: { open: '●', draft: '✎', merged: '✔', closed: '✕', unknown: '◌' },
   WORD: { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' },
   stateOf: () => 'unknown',
   summaryState: () => 'unknown',

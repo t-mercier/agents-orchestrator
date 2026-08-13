@@ -9,7 +9,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api
   else root.CSMPrState = api
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  const GLYPH = { open: '●', draft: '◍', merged: '✔', closed: '✕', unknown: '◌' }
+  const GLYPH = { open: '●', draft: '✎', merged: '✔', closed: '✕', unknown: '◌' }
   const WORD = { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' }
 
   // Kept for callers that need to order states; the summary below does NOT use it.
@@ -47,7 +47,7 @@
   // A tracker's statuses are per-project ("Triaged", "In Review", "Won't Do"), so the
   // label shown is always the raw one. Only the COLOUR is folded, into the same four
   // families as a PR — one grammar for both: ● it is moving, ✔ it is finished,
-  // ✕ abandoned, ◌ nothing yet.
+  // ✕ abandoned, ✎ still being written, ◌ nothing yet.
   //
   // Matched on whole words so "Done" hits and "Doneness" does not, and longest-family
   // first so "In Review" is active rather than falling through to unknown.

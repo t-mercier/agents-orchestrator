@@ -1251,7 +1251,14 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 .pr-merged { color: #a371f7; }
 .pr-closed { color: #f85149; }
 .pr-unknown { color: var(--text-tertiary); }
-.pr-glyph { font: 700 10px/1 system-ui; }
+/* Fixed box, centred: ● ✎ ✔ ✕ ◌ are not the same width, so letting the glyph size
+   itself shifted everything after it — the PR numbers in a picker stopped lining up
+   from one row to the next. */
+.pr-glyph {
+  font: 700 10px/1 system-ui;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 11px; flex: none;
+}
 
 /* Detail panel (mock B): a labelled chip per PR, so nothing has to be learned. */
 .pr-list { display: flex; flex-direction: column; gap: 5px; }
@@ -1271,8 +1278,10 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 .act.busy { cursor: progress; color: var(--accent); animation: close-busy-pulse 1.1s ease-in-out infinite; }
 /* In the link picker the tinted source mark leads the row, replacing the › marker —
    the same shape the toolbar pill shows, so both read as one vocabulary. */
-.menu-mark { display: inline-flex; align-items: center; gap: 3px; flex: none; }
-.menu-mark svg { width: 14px; height: 14px; display: block; }
+/* Fixed width so a row WITHOUT a state glyph still occupies the same box as one with:
+   otherwise the ids after it step left and right down the list. */
+.menu-mark { display: inline-flex; align-items: center; gap: 3px; flex: none; width: 28px; }
+.menu-mark svg { width: 14px; height: 14px; display: block; flex: none; }
 .board-menu-item .board-menu-name { font-variant-numeric: tabular-nums; }
 /* The tracker's own status word, trailing the row and never stealing from the id. */
 .menu-status {
