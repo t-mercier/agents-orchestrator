@@ -32,6 +32,8 @@ The one thing worth getting straight:
 - **Resume** — continue an **existing** conversation *exactly* where it stopped; Claude replays the full history. Needs that recorded history to still be around.
 - **Restart** — reopen a session from its **notes** in a **fresh** conversation. You get the full plan back *plus* the recorded **session id of the original**, so the new chat knows the whole story and the link back to the old conversation is never lost. Use it for a clean slate that still remembers everything.
 
+  The dashboard offers Restart **only when Resume cannot run** — no session id, or the transcript is gone. Where Resume works it is strictly better, and a compaction already gives you a fresh context. The skill stays available by hand whenever you want a clean slate.
+
 > Rule of thumb: **Resume** = same conversation · **Restart** = same project, fresh conversation, history still linked · **Start** = new project.
 
 Each can open **in the app's embedded terminal** or **in your own terminal**, with the toggle next to the button.
@@ -108,5 +110,6 @@ You run these inside Claude Code (the dashboard buttons trigger them for you). C
 1. **`/start-session FEAT 1842 checkout-redesign`** → new session, ready to work.
 2. Work with Claude; the dashboard shows it as **Active**, and flags it **waiting** when it needs you.
 3. **`/close-session`** when you're done for the day → it moves to **Closed**, notes summarised.
+   Closed the terminal and forgot? The **Close** button on a stale session does the same thing headlessly — it resumes the session in the background, writes the summary and attaches the PRs, without opening anything.
 4. Tomorrow, **Restart** it from the dashboard → fresh conversation, full context from the notes.
 5. Shipped? **Archive** it to clear it out — the folder and notes stay on disk.

@@ -10,7 +10,59 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.0-alpha] - 2026-08-13
+
+### Added
+- **A pull request tells you whether it is open, merged or closed** — the cards carried a
+  link to each PR and nothing about its state, so the one question you actually have (is
+  this still waiting on me?) meant opening GitHub. The GitHub mark is now tinted by state
+  in the list and on the board, and the detail panel spells each PR out as a labelled chip
+  with its title: `#5107 test: assert the route-instruction source holds no features`.
+  Colour never carries the meaning alone — every state also has a mark, both for
+  colour-blind readers and because green / orange / red are already the session status dot
+  a few pixels away on the same card.
+- **Sync is a button, and the only thing here that touches the network** — no timer, and no
+  Settings toggle either, since the button *is* the opt-in. The promise becomes "zero
+  network until you press Sync", which is one honest asterisk rather than a preference
+  someone can forget having enabled. State comes from `gh` with your existing login,
+  cached in `~/.config/ai-agents-orchestrator/pr-status.json` — never in `notes.md`, whose
+  frontmatter belongs to you and the session skills. A PR never synced reads *not synced*,
+  not blank: blank would say "no PR here".
+- **A ticket shows its tracker's own status word** — `In Review`, `Triaged`, whatever your
+  project calls it, since folding those into three words of ours would lose the
+  distinction the project actually works with. Only the *colour* is folded, into the same
+  families as a PR: one grammar for both — moving, finished, abandoned, in draft, nothing
+  yet. The status comes from a `ticket_states:` frontmatter list written by the session
+  skills, so the app holds no tracker credentials.
+- **Close wraps a stale session up for real, without opening a terminal** — it used to
+  stamp a marker and nothing else, landing the session in Closed with no summary and no PR
+  attached. It now resumes the session headless and lets the new `/wrap-session` write the
+  actual wrap-up. That skill is `/close-session` steps 1–6 and nothing else: no distil, no
+  skill proposal, no questions, since `--print` has no one to answer them. The close marker
+  is what *means* Closed, so the app verifies the file rather than the exit code and stamps
+  the plain marker itself on failure or timeout — a session you asked to close never stays
+  stale.
+
 ### Changed
+- **Restart only appears when Resume cannot** — where Resume works it is strictly better,
+  and a compaction already resets the context, so two buttons only made the choice harder.
+  Restart survives for sessions whose transcript is gone, where rebuilding from the notes
+  is the sole option.
+- **One door per action in the detail panel** — the standing Edit button is gone: both
+  pickers already end in "Add / edit…", so it was a second way into one dialog. It
+  survives only when neither picker exists, which is exactly when you need it to attach a
+  first PR or ticket. The ticket and PR icons now always open their picker, single link
+  included, which is what makes dropping Edit safe.
+- **"End session" is "Close session"** — the rest of the lifecycle already said Closed
+  everywhere; only the terminal's own button said End, which read as a fourth state.
+- **One look-card grid for Appearance, Categories and Board columns** — board colours drew
+  flat colour blocks while the other two drew a tinted card with the accent as an inner
+  dot, which is why that panel read as belonging to a different app. The block had been
+  copy-pasted three times and the copies had drifted; it is now one shared renderer, and
+  the round colour dot one rule instead of two sizes.
+- **Reference links tint on hover instead of underlining** — these rows are dense and full
+  of monospaced ids, where an underline crowds the descenders and reads as noise.
+
 - **`/skill-propose` fires in flight, and counts rewrite passes** — its criteria already
   covered "the user corrected your approach", but the skill was reachable only from the
   session close, so the strongest signal available went unnoticed while it was happening.
@@ -39,6 +91,31 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
   nothing consumed. It now reads the index first (leaves before the tree is the wrong
   order, and it is where an orphan note becomes visible) and searches the MOCs alongside
   the notes. `route_search.py` gains a `mocs` mode; 16 selftests.
+
+### Fixed
+- **Saving the Edit-refs dialog no longer races itself** — it wrote tickets and PR links
+  through `Promise.all`, and both commands read-modify-write the same `notes.md`. Two
+  distinct failures came out of that: the temp file was derived from the target alone, so
+  the second writer truncated the first one's temp and then renamed a path already moved
+  away ("No such file or directory"); and both writers started from the same pre-edit
+  content, so one edit was silently dropped. Temps now carry a pid and counter, and the
+  two writes run in sequence.
+- **One icon speaks only when the set agrees** — a session with three PRs showed a cross
+  reading "closed" while two of them were still open, because the summary picked the most
+  demanding state and presented it as the whole answer. Disagreement now shows no state at
+  all; the picker is one click away for the detail.
+- **The state marks are SVG, and drawn for the size they are shown at** — the pencil and
+  the dotted ring were dingbats absent from SF Pro, so macOS substituted another face or
+  drew nothing: draft and un-synced simply had no visible mark. They are also no longer
+  24px icons shrunk to 11 with a heavy stroke, which read as smears.
+- **The PR numbers line up** — the marks are not all the same width, so each row sized its
+  own and the ids after it stepped left and right down the list.
+- **Close is reachable from the Actions row, and the ticket / PR icons are back in it** —
+  Close only ever existed as a hover icon on a list card, and the icons had been dropped
+  from that row when the links moved into the Infos rows, which sit at the top of a pane
+  you have usually scrolled past by then.
+- **The Infos rows read as pairs** — the gap between two rows was the same as between a
+  label and its own value, so nothing grouped.
 
 ### Documentation
 - **The web page hands out builds directly** — it only ever linked to the repo, so someone

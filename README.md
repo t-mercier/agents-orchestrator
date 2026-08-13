@@ -8,7 +8,7 @@
 
 [![Live site](https://img.shields.io/badge/%F0%9F%8C%90%20Live%20site-visit-9b8cff?style=for-the-badge)](https://t-mercier.github.io/ai-agents-orchestrator/)
 
-[![Version](https://img.shields.io/badge/version-0.7.0--alpha-9b8cff)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.0--alpha-9b8cff)](CHANGELOG.md)
 [![CI](https://img.shields.io/github/actions/workflow/status/t-mercier/ai-agents-orchestrator/ci.yml?branch=master)](https://github.com/t-mercier/ai-agents-orchestrator/actions)
 [![License: Source Available](https://img.shields.io/badge/license-Source%20Available-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-13+-000000?style=flat&logo=apple)](https://www.apple.com/macos/)
@@ -41,7 +41,7 @@ Nothing moves on its own — you close, you archive.
 | **＋ New** | Creates the workspace + its `notes.md`, registers the session, launches it. **Start here** — you never need the terminal first. |
 | **Resume** | Relaunches a session the app already manages. |
 | **Adopt** | For a session you started outside the app (listed under *Recent · unmanaged*): relaunches it **and** creates its `notes.md` + registers it. One-time; after that it's just Resume. |
-| **Close session ✕** | Wraps it up with a summary → Closed. |
+| **Close session ✕** | Wraps it up with a summary → Closed. From a stale session, the **Close** button does the same headlessly, no terminal needed. |
 
 Two things that save pain: a session's **`notes.md` is its memory** (it survives compaction —
 `/save-session` checkpoints it, `/close-session` wraps it up), and **one session = one process**
@@ -59,6 +59,10 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > ## What's new
 > Newest first — full history in the [changelog](CHANGELOG.md).
 >
+> - 🔀 **A PR tells you whether it is open, merged or closed** — the GitHub mark is tinted by state in the list and on the board, and the detail panel spells each PR out with its title. State comes from `gh` when you press **Sync** — no timer, no background traffic: the button *is* the opt-in, so the promise is "zero network until you press Sync".
+> - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Only the colour is folded into the same families as a PR, so one grammar covers both. Written into the notes by the session skills; the app holds no tracker credentials.
+> - ✅ **Close wraps a stale session up for real** — it resumes the session headless and lets the new `/wrap-session` write the summary and attach the PRs, without opening a terminal. It always ends Closed: if the summary fails, the plain marker is stamped anyway.
+> - ↩️ **Restart only shows when Resume cannot** — where Resume works it is strictly better, and a compaction already resets the context.
 > - 🔗 **A PR you open mid-session attaches itself** — an opt-in hook reads the URL `gh pr create` prints and appends it to the session's notes, so it shows on the card without waiting for the next checkpoint. `bash scripts/install.sh --with-hooks`.
 > - 🧠 **The knowledge notes fill as you work** — `/learn` writes a note the moment something durable comes up, instead of waiting for a session close that often never happens. It extends an existing note rather than adding a near-duplicate, and announces every write in one line — no approval prompt, because a prompt at every insight would defeat the point.
 > - 🔗 **Links in the embedded terminal are clickable** — Claude Code prints a PR it just opened as an OSC 8 hyperlink; those are now clickable in the in-app terminal, with the target's scheme checked before anything is handed to the OS.
@@ -185,6 +189,7 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/start-session <CAT> <ticket> <name>` | Create a session workspace + `notes.md` under the category's folder, register it, sync the repo |
 | `/close-session` | Wrap up the session: summarise into `notes.md` + append a history entry tagged with the session id |
 | `/save-session` | Checkpoint mid-flight (same summary as close, marked `(in progress)`) **without** closing it — handy before a context compaction |
+| `/wrap-session <notes> <id>` | The headless twin of `/close-session`, run by the dashboard's **Close** button: steps 1–6 only, no distil and no questions — `--print` has no one to answer them |
 | `/restart-session <slug>` | Reload a session's notes **and its recorded session id** into a fresh session (history stays linked) |
 | `/archive-session <slug>` | Mark a session archived (drops it from the active list) |
 | `/import-session <CAT> <name>` | Adopt an unmanaged Claude Code session into management, under a chosen space and category |
