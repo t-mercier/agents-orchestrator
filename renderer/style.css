@@ -1496,11 +1496,16 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 /* Meta rows */
 /* Reference values inside a meta row (tickets, PRs). Each opens externally; without a
    URL (no tracker configured) the id renders as plain text instead of a dead link. */
+/* Hover is a tinted plate, not an underline: these rows are dense and full of
+   monospaced ids, where an underline crowds the descenders and reads as noise. The
+   padding is permanent and cancelled by an equal negative margin, so the plate appears
+   without anything shifting under the pointer. */
 .ref-link {
   font: inherit; color: var(--accent); background: none; border: none;
-  padding: 0; cursor: pointer;
+  padding: 2px 6px; margin: -2px -6px; border-radius: 5px; cursor: pointer;
+  transition: background-color 0.12s;
 }
-.ref-link:hover { text-decoration: underline; }
+.ref-link:hover { background: rgba(var(--accent-rgb), 0.14); }
 .ref-plain { color: var(--text-secondary); }
 .ref-sep { color: var(--text-tertiary); margin: 0 6px; }
 
@@ -1534,8 +1539,12 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
   display: block;
   margin-bottom: 3px;
 }
-.meta-row .path-link { cursor: pointer; transition: color 0.12s; }
-.meta-row .path-link:hover { color: var(--accent); text-decoration: underline; }
+.meta-row .path-link {
+  cursor: pointer; border-radius: 5px;
+  padding: 2px 6px; margin: -2px -6px;
+  transition: color 0.12s, background-color 0.12s;
+}
+.meta-row .path-link:hover { color: var(--accent); background: rgba(var(--accent-rgb), 0.14); }
 
 /* ===== Detail Sections ===== */
 /* Detail sections */
