@@ -1272,6 +1272,11 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 .menu-mark { display: inline-flex; align-items: center; gap: 3px; flex: none; }
 .menu-mark svg { width: 14px; height: 14px; display: block; }
 .board-menu-item .board-menu-name { font-variant-numeric: tabular-nums; }
+/* The tracker's own status word, trailing the row and never stealing from the id. */
+.menu-status {
+  margin-left: auto; padding-left: 10px; flex: none;
+  font-size: 11px; color: var(--text-tertiary); white-space: nowrap;
+}
 
 /* Trash button (archived sessions only) — same affordance as archive, red on hover (destructive). */
 .delete-btn {

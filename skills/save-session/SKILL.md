@@ -130,6 +130,20 @@ Same for tickets matching `^[A-Za-z][A-Za-z0-9]*-[0-9]+$` created/identified in 
 2. Add any that aren't already in `ticket:` / `tickets:` (primary first, extras as list items).
 3. If `ticket:` was empty and you just filled it, patch `active-sessions.json` by reading the current entry for `SESSION_ID` and MERGING: set only `ticket`, preserve `notes_path`, `category`, `name`, `started_at` (do NOT replace the whole entry). The registry mirrors the PRIMARY ticket only — extras live in notes.md alone.
 
+4. **Record each ticket's status**, when this session actually saw it — a tracker
+   lookup, a status you were told, a transition you performed. Never invent one, and
+   never keep an older entry you now know is wrong: an out-of-date status shown as
+   current is worse than none.
+
+```yaml
+ticket_states:                             # one entry per ticket, the tracker's own words
+  - GOSDK-201341: In Review
+  - GOSDK-221110: Triaged
+```
+
+   The dashboard shows that word as-is and only derives its COLOUR (in flight /
+   finished / abandoned / not started), so a project-specific status stays readable.
+
 The dashboard's ticket / PR icons fill automatically once the frontmatter is right; with
 several links they show a count badge and open a picker.
 

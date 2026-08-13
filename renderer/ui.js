@@ -655,8 +655,13 @@ function linkMenuFor(s, kind) {
   if (!s) return null
   if (kind === 'ticket') {
     const tickets = ticketsOf(s)
+    // The row carries the tracker's own words ("In Review"), because folding them into
+    // three of our own would lose the distinction the project actually works with.
     return { kind, head: `Tickets · ${tickets.length}`, notesPath: s.notesPath || '',
-      items: tickets.map(t => ({ label: t, url: ticketUrl(t) })) }
+      items: tickets.map(t => ({
+        label: t, url: ticketUrl(t),
+        state: ticketFamilyOf(s, t), word: ticketStatusOf(s, t),
+      })) }
   }
   const prs = prLinksOf(s)
   // The number alone, not owner/repo#number: inside a session's own picker the repo is
@@ -674,7 +679,14 @@ function ticketPill(s) {
   // The picker for one ticket too — same reason as prPill: its last row is the editor,
   // which is now the only way in.
   const count = tickets.length > 1 ? `<span class="multi-count">${tickets.length}</span>` : ''
-  return `<button class="act pill${tickets.length > 1 ? ' multi' : ''}" ${linkMenuAttrs('ticket', s)} aria-label="${tickets.length} ticket${tickets.length > 1 ? 's' : ''}" data-tip="${tickets.length > 1 ? `${tickets.length} tickets · pick one` : `${escapeHtml(tickets[0])} · open ticket`}">${ICON_TICKET}${count}</button>`
+  // No status known → the icon stays exactly as it was. Unlike a PR, where `unknown`
+  // means "you have not synced", a ticket with no status simply predates the skills
+  // writing one — greying every ticket icon to say that would be noise, not information.
+  const fam = ticketFamilyOfSession(s)
+  const known = fam !== 'unknown'
+  const glyph = known ? `<span class="pr-glyph">${PR_GLYPH[fam]}</span>` : ''
+  const status = ticketStatusOf(s, tickets[0])
+  return `<button class="act pill${tickets.length > 1 ? ' multi' : ''}${known ? ` pr-${fam}` : ''}" ${linkMenuAttrs('ticket', s)} aria-label="${tickets.length} ticket${tickets.length > 1 ? 's' : ''}" data-tip="${tickets.length > 1 ? `${tickets.length} tickets · pick one` : `${escapeHtml(tickets[0])}${status ? ` · ${escapeHtml(status)}` : ''}`}">${ICON_TICKET}${glyph}${count}</button>`
 }
 
 // Ticket as a NUMBER label (e.g. FEAT-1842) for list + card views — the id reads at a
@@ -714,6 +726,17 @@ const PR_GLYPH = PR_FALLBACK.GLYPH
 const PR_WORD = PR_FALLBACK.WORD
 const prStateOf = (url) => prState().stateOf(window._prStatus, url)
 const prStateOfSession = (s) => prState().sessionState(window._prStatus, prLinksOf(s))
+
+// Ticket statuses come from the notes.md frontmatter, written by the session skills —
+// the app holds no tracker credentials. The raw status is what gets shown (a project's
+// own words); only its colour is folded into the PR families.
+const ticketStatusOf = (s, id) => (prState().ticketStateMap(s.ticketStates)[id] || '')
+const ticketFamilyOf = (s, id) => prState().ticketFamily(ticketStatusOf(s, id))
+function ticketFamilyOfSession(s) {
+  const fams = ticketsOf(s).map(t => ticketFamilyOf(s, t))
+  if (!fams.length) return 'unknown'
+  return fams.reduce((a, b) => (prState().RANK[b] < prState().RANK[a] ? b : a))
+}
 
 // The GitHub icon for a session's PRs, tinted by state (mock A): one link opens straight
 // away, several show a count badge and open the picker.
@@ -827,10 +850,13 @@ function openLinkMenu(anchor, menu) {
     menu.items.map((it, i) =>
       `<button class="board-menu-item" data-link-open="${i}"${it.url ? '' : ' disabled'}>` +
       (it.state
-        ? `<span class="menu-mark pr-${it.state}" title="${PR_WORD[it.state]}">` +
+        ? `<span class="menu-mark pr-${it.state}" title="${escapeHtml(it.word || PR_WORD[it.state])}">` +
           `${menu.kind === 'pr' ? ICON_GITHUB : ICON_TICKET}<span class="pr-glyph">${PR_GLYPH[it.state]}</span></span>`
         : `<span class="board-menu-check">›</span>`) +
-      `<span class="board-menu-name">${escapeHtml(it.label)}</span></button>`
+      `<span class="board-menu-name">${escapeHtml(it.label)}</span>` +
+      // A ticket shows its tracker's own status word; a PR's state is already in the mark.
+      (it.word ? `<span class="menu-status">${escapeHtml(it.word)}</span>` : '') +
+      `</button>`
     ).join('') +
     // Editing needs a writable notes.md — an unmanaged session has none.
     (menu.notesPath

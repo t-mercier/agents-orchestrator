@@ -58,3 +58,47 @@ describe('vocabulary', () => {
     expect(new Set(glyphs).size).toBe(glyphs.length)
   })
 })
+
+describe('ticketFamily', () => {
+  it('folds finished statuses onto the merged colour', () => {
+    for (const s of ['Done', 'Resolved', 'Closed', 'Complete', 'Fixed'])
+      expect(P.ticketFamily(s)).toBe('merged')
+  })
+  it('folds in-flight statuses onto the open colour', () => {
+    for (const s of ['In Progress', 'In Review', 'Triaged', 'Blocked'])
+      expect(P.ticketFamily(s)).toBe('open')
+  })
+  it('folds not-started statuses onto draft', () => {
+    for (const s of ['To Do', 'Open', 'Backlog', 'New'])
+      expect(P.ticketFamily(s)).toBe('draft')
+  })
+  it('folds abandoned statuses onto closed', () => {
+    for (const s of ["Won't Do", 'Cancelled', 'Rejected', 'Duplicate'])
+      expect(P.ticketFamily(s)).toBe('closed')
+  })
+  it('checks abandoned before finished, so "Won\'t Do" is not read as "Do"', () => {
+    expect(P.ticketFamily("Won't Do")).toBe('closed')
+  })
+  it('is case- and space-insensitive', () => {
+    expect(P.ticketFamily('  IN progress ')).toBe('open')
+  })
+  it('is unknown for a status it cannot place, and for nothing at all', () => {
+    expect(P.ticketFamily('Pending Vendor')).toBe('unknown')
+    expect(P.ticketFamily('')).toBe('unknown')
+    expect(P.ticketFamily(null)).toBe('unknown')
+  })
+})
+
+describe('ticketStateMap', () => {
+  it('reads the YAML `ID: Status` entries the skills write', () => {
+    expect(P.ticketStateMap(['GOSDK-1: In Review', 'GOSDK-2: Done']))
+      .toEqual({ 'GOSDK-1': 'In Review', 'GOSDK-2': 'Done' })
+  })
+  it('keeps a status that itself contains a colon', () => {
+    expect(P.ticketStateMap(['X-1: Blocked: waiting on SDK'])).toEqual({ 'X-1': 'Blocked: waiting on SDK' })
+  })
+  it('drops malformed entries instead of guessing', () => {
+    expect(P.ticketStateMap(['no colon here', ': orphan', 'X-2: '])).toEqual({})
+  })
+  it('survives an absent list', () => expect(P.ticketStateMap(null)).toEqual({}))
+})

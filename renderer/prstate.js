@@ -33,5 +33,45 @@
     return list.reduce((a, b) => (RANK[b] < RANK[a] ? b : a))
   }
 
-  return { GLYPH, WORD, RANK, STATES, stateOf, sessionState }
+  // ── Tickets ──────────────────────────────────────────────────────────────────
+  // A tracker's statuses are per-project ("Triaged", "In Review", "Won't Do"), so the
+  // label shown is always the raw one. Only the COLOUR is folded, into the same four
+  // families as a PR — one grammar for both: ● it is moving, ✔ it is finished,
+  // ✕ abandoned, ◌ nothing yet.
+  //
+  // Matched on whole words so "Done" hits and "Doneness" does not, and longest-family
+  // first so "In Review" is active rather than falling through to unknown.
+  const TICKET_FAMILIES = [
+    ['closed', ["won't do", 'wont do', 'cancelled', 'canceled', 'rejected', 'duplicate', 'abandoned', 'invalid']],
+    ['merged', ['done', 'resolved', 'closed', 'complete', 'completed', 'shipped', 'released', 'fixed', 'merged']],
+    ['open', ['in progress', 'in review', 'review', 'triaged', 'doing', 'started', 'implementing', 'testing', 'blocked']],
+    ['draft', ['to do', 'todo', 'open', 'new', 'backlog', 'selected for development', 'triage', 'untriaged']],
+  ]
+
+  function ticketFamily(status) {
+    const s = String(status || '').trim().toLowerCase()
+    if (!s) return 'unknown'
+    for (const [family, words] of TICKET_FAMILIES) {
+      if (words.some((w) => s === w || s.includes(w))) return family
+    }
+    return 'unknown'
+  }
+
+  // `["GOSDK-1: In Review", "GOSDK-2: Done"]` → `{ "GOSDK-1": "In Review", … }`.
+  // Written by the session skills as YAML `- ID: Status` entries: valid YAML, and the
+  // existing list parser hands each one back whole, so no map parser was needed. An
+  // entry without a colon is dropped rather than guessed at.
+  function ticketStateMap(entries) {
+    const out = {}
+    for (const raw of entries || []) {
+      const i = String(raw).indexOf(':')
+      if (i <= 0) continue
+      const id = String(raw).slice(0, i).trim()
+      const status = String(raw).slice(i + 1).trim()
+      if (id && status) out[id] = status
+    }
+    return out
+  }
+
+  return { GLYPH, WORD, RANK, STATES, stateOf, sessionState, ticketFamily, ticketStateMap }
 })

@@ -514,6 +514,7 @@ struct NotesMeta {
     next_steps: Value,
     pr_links: Vec<String>,
     tickets: Vec<String>,
+    ticket_states: Vec<String>,
     last_summary: Value,
 }
 
@@ -524,6 +525,9 @@ fn read_notes_meta(notes_path: &str) -> NotesMeta {
             next_steps: extract_section(&c, "Next steps").map(Value::String).unwrap_or(Value::Null),
             pr_links: frontmatter_values(&c, "pr_link", "pr_links"),
             tickets: frontmatter_values(&c, "ticket", "tickets"),
+            // `ID: Status` entries written by the session skills — valid YAML, and the
+            // list parser already returns each one whole, so no map parser is needed.
+            ticket_states: frontmatter_values(&c, "ticket_state", "ticket_states"),
             last_summary: last_history_summary(&c).map(Value::String).unwrap_or(Value::Null),
         },
         Err(_) => NotesMeta::default(),
@@ -671,8 +675,9 @@ pub fn get_sessions() -> Vec<Value> {
             Some(p) => read_notes_meta(p),
             None => NotesMeta::default(),
         };
-        let NotesMeta { goal, next_steps, pr_links: pr_links_fm, tickets: tickets_fm, last_summary } =
-            notes_meta;
+        let NotesMeta {
+            goal, next_steps, pr_links: pr_links_fm, tickets: tickets_fm, ticket_states, last_summary
+        } = notes_meta;
         let launch_cwd = data.get("cwd").and_then(Value::as_str).unwrap_or("");
         // The transcript records where the session actually works (it cd's into a
         // repo/worktree); the launch cwd is just where `claude` started. Use the
@@ -743,6 +748,7 @@ pub fn get_sessions() -> Vec<Value> {
             "category": entry_meta.get("category").cloned().unwrap_or(Value::Null),
             "ticket": ticket,
             "tickets": tickets,
+            "ticketStates": ticket_states,
             "goal": goal,
             "nextSteps": next_steps,
             "gitBranch": git_branch,
@@ -1349,6 +1355,7 @@ fn scan_historical() -> Vec<Value> {
                 "root": root.clone(),
                 "ticket": ticket,
                 "tickets": tickets,
+                "ticketStates": frontmatter_values(&content, "ticket_state", "ticket_states"),
                 "name": name,
                 "branch": fv(&fm, "branch"),
                 "prLink": pr_link,

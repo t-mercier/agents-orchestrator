@@ -77,6 +77,15 @@ Collect every PR URL this session is about:
 Add any URL not already present, keeping the existing primary as the primary. Same for
 tickets matching `^[A-Za-z][A-Za-z0-9]*-[0-9]+$`, uppercased.
 
+Record each ticket's status too, when this session actually saw one — a tracker lookup, a
+status you were told, a transition you performed. Never invent one, and never leave an
+entry you now know is wrong: an out-of-date status shown as current is worse than none.
+
+```yaml
+ticket_states:                             # one entry per ticket, the tracker's own words
+  - GOSDK-201341: In Review
+```
+
 If `ticket:` was empty and you just filled it, patch `~/.claude/active-sessions.json` for
 `<session_id>` by **merging**: set `ticket` only, preserving `notes_path`, `category`,
 `name`, `started_at`. The registry mirrors the primary ticket alone.
