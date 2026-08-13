@@ -10,6 +10,20 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **A session no longer gets handed the whole space root** — both launch paths used the
+  root as the working directory, and for a space rooted at `~` that is the entire home:
+  on macOS, a file-access prompt per protected folder, every single time. Resume now
+  relaunches in the session's own folder when the recorded directory is that broad (the
+  home, or a configured root) and the session has a `notes.md`; a narrower directory is
+  kept untouched, since a session that was working in a repo carries that repo there. A
+  new session starts in its category's folder rather than the root, falling back to the
+  root when that folder does not exist yet.
+
+  The transcripts are left alone. They record where a session *started*; the app is what
+  reads that back and decides where to relaunch. Rewriting them to correct a choice made
+  at launch would risk the sessions for nothing.
+
 ## [0.8.0-alpha] - 2026-08-13
 
 ### Added
