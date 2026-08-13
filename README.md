@@ -20,7 +20,7 @@
 
 > AI coding sessions now run for **days, sometimes entire projects** — each with its own context, decisions, repos and agents. Run a few in parallel and you're hunting through a dozen terminal windows to find the one that needs you.
 >
-> **AI Agents Orchestrator puts every session in one window** — live status, the work in progress, and a terminal for each. Local-first, read-only, zero network.
+> **AI Agents Orchestrator puts every session in one window** — live status, the work in progress, and a terminal for each. Local-first, read-only, and silent on the network until you press **Sync**.
 
 ## TL;DR — how you're meant to use it
 
