@@ -20,6 +20,10 @@ async function findSession() {
 
 async function refresh() {
   try {
+    // The detached window has its own JS context, so it needs its own copy of the PR
+    // cache — without it every PR here would read `unknown` while the main window
+    // shows the real state.
+    if (window.api.getPrStatus) window._prStatus = (await window.api.getPrStatus()) || {}
     const { session, tab } = await findSession()
     if (session) {
       document.getElementById('win-title').textContent = session.name || 'Session'

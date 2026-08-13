@@ -5,6 +5,7 @@ mod git;
 mod terminal;
 mod skills;
 mod statusline;
+mod prstatus;
 
 use tauri::{Manager, Emitter};
 use serde_json::Value;
@@ -1407,6 +1408,8 @@ pub fn run() {
             notes_closed_since,
             close_session,
             wrap_session,
+            prstatus::get_pr_status,
+            prstatus::sync_pr_status,
             can_reveal_terminal,
             reveal_terminal,
             get_usage,

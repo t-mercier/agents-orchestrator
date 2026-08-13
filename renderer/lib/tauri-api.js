@@ -127,6 +127,17 @@
         .then((summary) => ({ ok: true, summary: String(summary || '') }))
         .catch((e) => ({ ok: false, error: String(e) })),
 
+    // ── Pull-request state (src-tauri/src/prstatus.rs) ──
+    // Read the cache written by the last Sync: { url: { state, checkedAt } }.
+    getPrStatus: () => invoke('get_pr_status').catch(() => ({})),
+    // Ask GitHub about these PRs via `gh`. THE ONLY network call the app ever makes,
+    // and only on an explicit click. Per-PR failures come back as state 'unknown';
+    // a missing or logged-out gh rejects the whole call with something actionable.
+    syncPrStatus: (urls) =>
+      invoke('sync_pr_status', { urls: urls || [] })
+        .then((status) => ({ ok: true, status: status || {} }))
+        .catch((e) => ({ ok: false, error: String(e) })),
+
     // ── Session skills installer (src-tauri/src/skills.rs) ──
     // status: which bundled skills are already in ~/.claude/skills (drives the banner).
     skillsStatus: () => invoke('skills_status').catch(() => ({ installed: true, present: [], missing: [], differs: [] })),

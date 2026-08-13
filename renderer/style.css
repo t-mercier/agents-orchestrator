@@ -1239,6 +1239,41 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 }
 @keyframes close-busy-pulse { 50% { opacity: 0.35 !important; } }
 @media (prefers-reduced-motion: reduce) { .close-btn.busy { animation: none; } }
+/* ── Pull-request state ───────────────────────────────────────────────────────
+   GitHub's own hues, but never carrying the meaning alone: each state also has a
+   glyph. Two reasons — colour-blind readers, and the fact that green/orange/red
+   are already the SESSION status dot a few pixels away on the same card. The
+   glyph is what tells them apart; the colour only speeds up the scan. */
+.pr-open   { color: #3fb950; }
+.pr-draft  { color: #8b949e; }
+.pr-merged { color: #a371f7; }
+.pr-closed { color: #f85149; }
+.pr-unknown { color: var(--text-tertiary); }
+.pr-glyph { font: 700 10px/1 system-ui; }
+
+/* Detail panel (mock B): a labelled chip per PR, so nothing has to be learned. */
+.pr-list { display: flex; flex-direction: column; gap: 5px; }
+.pr-row { display: flex; align-items: center; gap: 7px; }
+.pr-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 4px 7px; border-radius: 5px;
+  background: rgba(var(--tint), 0.06);
+  border: 1px solid rgba(var(--tint), 0.1);
+}
+.pr-chip.pr-open   { background: rgba(63, 185, 80, 0.13);  border-color: rgba(63, 185, 80, 0.32); }
+.pr-chip.pr-merged { background: rgba(163, 113, 247, 0.14); border-color: rgba(163, 113, 247, 0.34); }
+.pr-chip.pr-closed { background: rgba(248, 81, 73, 0.12);  border-color: rgba(248, 81, 73, 0.32); }
+.pr-sync-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.pr-synced { font-size: 11px; color: var(--text-tertiary); }
+.pr-sync {
+  margin-left: auto; background: none; border: 1px solid var(--card-border);
+  color: var(--text-secondary); border-radius: 6px; padding: 3px 8px;
+  font-size: 11px; cursor: pointer; transition: color 0.1s, border-color 0.1s;
+}
+.pr-sync:hover { color: var(--text-primary); border-color: rgba(var(--tint), 0.2); }
+.pr-sync.busy { cursor: progress; color: var(--accent); animation: close-busy-pulse 1.1s ease-in-out infinite; }
+
 /* Trash button (archived sessions only) — same affordance as archive, red on hover (destructive). */
 .delete-btn {
   display: inline-flex; align-items: center; background: none; border: none;

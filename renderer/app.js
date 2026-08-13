@@ -1387,6 +1387,9 @@ async function boot() {
   } catch (err) {
     console.error('config load failed, using fallbacks:', err)
   }
+  // Whatever the last Sync learned, so PR marks are already coloured on first paint.
+  // Purely a disk read — nothing reaches the network until Sync is pressed.
+  if (window.api.getPrStatus) window.api.getPrStatus().then(st => { window._prStatus = st || {} })
   window.installDelegatedHandlers()           // one delegated click handler on <body>
   renderCategoryFilters()                     // build the ⚲ Filter button (from config)
   populateNewSessionCategories()              // fill the +New dropdown (from config)

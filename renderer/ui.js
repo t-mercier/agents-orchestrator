@@ -102,6 +102,27 @@ function refLinks(values, hrefOf, labelOf = (v) => v) {
   }).join('<span class="ref-sep">·</span>')
 }
 
+// The detail panel's PR list (mock B): one labelled chip per PR, plus the Sync button and
+// the age of what you are reading. The age is not a nicety — Sync is manual, so every
+// state on screen is a cached answer, and a stale one you believe is live is worse than
+// no state at all.
+function prStateRows(s) {
+  const prs = prLinksOf(s)
+  const synced = prs.map(u => (window._prStatus[u] || {}).checkedAt).filter(Boolean).sort()
+  const rows = prs.map(u => {
+    const st = prStateOf(u)
+    return `<div class="pr-row">` +
+      `<span class="pr-chip pr-${st}"><span class="pr-glyph">${PR_GLYPH[st]}</span>${PR_WORD[st]}</span>` +
+      `<button class="ref-link" data-url="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(prLabel(u))}</button>` +
+      `</div>`
+  }).join('')
+  const when = synced.length ? `<span class="pr-synced">synced ${escapeHtml(synced[0])}</span>` : ''
+  return `<div class="pr-list">${rows}` +
+    `<div class="pr-sync-row">${when}` +
+    `<button class="pr-sync" data-sync-prs="${escapeHtml(prs.join(' '))}" data-tip="Ask GitHub for the current state — the only network call this app makes">⟳ Sync</button>` +
+    `</div></div>`
+}
+
 function buildMetaRows(s, isHistorical) {
   const lastUpdate = formatDateTime(s.updatedAt || s.lastActivityAt)
   return [
@@ -112,7 +133,7 @@ function buildMetaRows(s, isHistorical) {
     // Tickets and PRs get their own rows: this is where a session's full reference list
     // is spelled out (a card only has room for "FEAT-1 +1"), and where you click through.
     ticketsOf(s).length ? metaRow(ticketsOf(s).length > 1 ? 'Tickets' : 'Ticket', refLinks(ticketsOf(s), ticketUrl)) : '',
-    prLinksOf(s).length ? metaRow(prLinksOf(s).length > 1 ? 'PRs' : 'PR', refLinks(prLinksOf(s), (u) => u, prLabel)) : '',
+    prLinksOf(s).length ? metaRow(prLinksOf(s).length > 1 ? 'PRs' : 'PR', prStateRows(s)) : '',
     s.root ? metaRow('Space', escapeHtml(String(s.root))) : '',
     isHistorical && s.startedAt ? metaRow('Started', escapeHtml(s.startedAt)) : '',
     lastUpdate ? metaRow('Last update', escapeHtml(lastUpdate)) : '',
@@ -655,15 +676,28 @@ function ticketChip(s) {
   return `<button class="ticket-tag ticket-chip multi" ${linkMenuAttrs('ticket', s)} data-tip="${tickets.length} tickets · pick one">${label}${extra}</button>`
 }
 
-// The GitHub icon for a session's PRs: one link opens straight away (unchanged),
-// several show a count badge and open the picker.
+// ── Pull-request state ──
+// Filled by getPrStatus() at startup and by every Sync. Absent = never synced, which
+// renders as `unknown` on purpose: showing nothing would read as "this PR has no state",
+// when the truth is "we have not asked".
+window._prStatus = window._prStatus || {}
+
+const PR_GLYPH = window.CSMPrState.GLYPH
+const PR_WORD = window.CSMPrState.WORD
+const prStateOf = (url) => window.CSMPrState.stateOf(window._prStatus, url)
+const prStateOfSession = (s) => window.CSMPrState.sessionState(window._prStatus, prLinksOf(s))
+
+// The GitHub icon for a session's PRs, tinted by state (mock A): one link opens straight
+// away, several show a count badge and open the picker.
 function prPill(s) {
   const prs = prLinksOf(s)
   if (!prs.length) return ''
+  const state = prStateOfSession(s)
+  const glyph = `<span class="pr-glyph">${PR_GLYPH[state]}</span>`
   if (prs.length === 1) {
-    return `<button class="act pill" data-url="${escapeHtml(prs[0])}" aria-label="Pull request" data-tip="Open ${escapeHtml(prLabel(prs[0]))} on GitHub">${ICON_GITHUB}</button>`
+    return `<button class="act pill pr-${state}" data-url="${escapeHtml(prs[0])}" aria-label="Pull request, ${PR_WORD[state]}" data-tip="${escapeHtml(prLabel(prs[0]))} · ${PR_WORD[state]}">${ICON_GITHUB}${glyph}</button>`
   }
-  return `<button class="act pill multi" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull requests" data-tip="${prs.length} PRs · pick one">${ICON_GITHUB}<span class="multi-count">${prs.length}</span></button>`
+  return `<button class="act pill multi pr-${state}" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull requests, ${PR_WORD[state]}" data-tip="${prs.length} PRs · pick one">${ICON_GITHUB}${glyph}<span class="multi-count">${prs.length}</span></button>`
 }
 
 
@@ -1348,6 +1382,29 @@ function installDelegatedHandlers() {
     // Close (stale → Closed). With a resumable session id, wrap_session resumes it
     // headless so /wrap-session writes a real summary — that takes a while, hence the
     // spinner. Without one (transcript gone), only the plain marker is possible.
+    // Sync: the one place the app talks to the network, and only because you clicked.
+    const sync = e.target.closest('[data-sync-prs]')
+    if (sync) {
+      e.stopPropagation()
+      const urls = (sync.dataset.syncPrs || '').split(' ').filter(Boolean)
+      if (!urls.length || !window.api.syncPrStatus) return
+      sync.disabled = true
+      sync.classList.add('busy')
+      window.api.syncPrStatus(urls).then(res => {
+        sync.disabled = false
+        sync.classList.remove('busy')
+        if (res && res.ok) {
+          window._prStatus = res.status
+          if (window.refreshSessions) window.refreshSessions()
+        } else if (window.confirmAction) {
+          // A missing or logged-out gh is one thing to fix, so it is said once and
+          // plainly rather than turning every PR into a silent "unknown".
+          window.confirmAction({ title: 'Could not sync', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
+        }
+      })
+      return
+    }
+
     // Matched by attribute, not class: the list card renders a hover icon and the detail
     // panel a labelled verb, and both must reach this handler.
     const close = e.target.closest('[data-close-notes]')

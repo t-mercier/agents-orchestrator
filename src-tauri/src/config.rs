@@ -21,8 +21,14 @@ pub fn home() -> PathBuf {
 type CacheEntry = (Option<SystemTime>, Value);
 static CONFIG_CACHE: LazyLock<Mutex<Option<CacheEntry>>> = LazyLock::new(|| Mutex::new(None));
 
+/// The app's own config folder. Its siblings of config.json (the PR-state cache) live
+/// here too, so there is one place to look and one place to delete.
+pub(crate) fn config_dir() -> PathBuf {
+    home().join(".config").join("ai-agents-orchestrator")
+}
+
 fn config_path() -> PathBuf {
-    home().join(".config").join("ai-agents-orchestrator").join("config.json")
+    config_dir().join("config.json")
 }
 
 /// Expand a leading `~` / `~/` to the home directory (empty/other strings pass through).
