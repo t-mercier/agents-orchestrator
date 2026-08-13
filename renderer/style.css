@@ -517,7 +517,9 @@ body.kb-dragging { cursor: grabbing; user-select: none; -webkit-user-select: non
 .board-menu-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); padding: 5px 8px 6px; }
 .board-menu-search { width: 100%; box-sizing: border-box; margin: 0 0 5px; padding: 6px 8px; font-family: var(--font); font-size: 12px; color: var(--text-primary); background: rgba(var(--tint), 0.06); border: 0.5px solid rgba(var(--tint), 0.14); border-radius: 6px; outline: none; }
 .board-menu-search:focus { border-color: rgba(var(--accent-rgb), 0.5); }
-.board-menu-item { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font-family: var(--font); font-size: 12px; color: var(--text-primary); padding: 6px 8px; border-radius: 6px; }
+.board-menu-item { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font-family: var(--font); font-size: 12px; color: var(--text-primary); padding: 8px 10px; border-radius: 6px; }
+/* Rows in a picker are a list to scan, not a dense menu — they need room to separate. */
+.board-menu + .board-menu-item, .link-menu .board-menu-item + .board-menu-item { margin-top: 2px; }
 .board-menu-item:hover { background: rgba(var(--tint), 0.08); }
 .board-menu-item.active { background: rgba(var(--accent-rgb), 0.14); }
 .board-menu-check { width: 12px; flex: none; color: var(--accent); font-size: 11px; }

@@ -683,7 +683,7 @@ function ticketPill(s) {
   // means "you have not synced", a ticket with no status simply predates the skills
   // writing one — greying every ticket icon to say that would be noise, not information.
   const fam = ticketFamilyOfSession(s)
-  const known = fam !== 'unknown'
+  const known = showsState(fam)
   const glyph = known ? `<span class="pr-glyph">${PR_GLYPH[fam]}</span>` : ''
   const status = ticketStatusOf(s, tickets[0])
   return `<button class="act pill${tickets.length > 1 ? ' multi' : ''}${known ? ` pr-${fam}` : ''}" ${linkMenuAttrs('ticket', s)} aria-label="${tickets.length} ticket${tickets.length > 1 ? 's' : ''}" data-tip="${tickets.length > 1 ? `${tickets.length} tickets · pick one` : `${escapeHtml(tickets[0])}${status ? ` · ${escapeHtml(status)}` : ''}`}">${ICON_TICKET}${glyph}${count}</button>`
@@ -719,13 +719,20 @@ const PR_FALLBACK = {
   GLYPH: { open: '●', draft: '◍', merged: '✔', closed: '✕', unknown: '◌' },
   WORD: { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' },
   stateOf: () => 'unknown',
-  sessionState: () => 'unknown',
+  summaryState: () => 'unknown',
+  summaryOf: () => 'unknown',
+  ticketStateMap: () => ({}),
+  ticketFamily: () => 'unknown',
 }
 const prState = () => window.CSMPrState || PR_FALLBACK
 const PR_GLYPH = PR_FALLBACK.GLYPH
 const PR_WORD = PR_FALLBACK.WORD
 const prStateOf = (url) => prState().stateOf(window._prStatus, url)
-const prStateOfSession = (s) => prState().sessionState(window._prStatus, prLinksOf(s))
+const prStateOfSession = (s) => prState().summaryState(window._prStatus, prLinksOf(s))
+
+// One icon can only speak for a set that agrees. `mixed` and `unknown` both mean
+// "say nothing" — no tint, no glyph, no state in the tooltip.
+const showsState = (state) => state !== 'mixed' && state !== 'unknown'
 
 // Ticket statuses come from the notes.md frontmatter, written by the session skills —
 // the app holds no tracker credentials. The raw status is what gets shown (a project's
@@ -733,9 +740,7 @@ const prStateOfSession = (s) => prState().sessionState(window._prStatus, prLinks
 const ticketStatusOf = (s, id) => (prState().ticketStateMap(s.ticketStates)[id] || '')
 const ticketFamilyOf = (s, id) => prState().ticketFamily(ticketStatusOf(s, id))
 function ticketFamilyOfSession(s) {
-  const fams = ticketsOf(s).map(t => ticketFamilyOf(s, t))
-  if (!fams.length) return 'unknown'
-  return fams.reduce((a, b) => (prState().RANK[b] < prState().RANK[a] ? b : a))
+  return prState().summaryOf(ticketsOf(s).map(t => ticketFamilyOf(s, t)))
 }
 
 // The GitHub icon for a session's PRs, tinted by state (mock A): one link opens straight
@@ -744,12 +749,15 @@ function prPill(s) {
   const prs = prLinksOf(s)
   if (!prs.length) return ''
   const state = prStateOfSession(s)
-  const glyph = `<span class="pr-glyph">${PR_GLYPH[state]}</span>`
+  const speaks = showsState(state)
+  const glyph = speaks ? `<span class="pr-glyph">${PR_GLYPH[state]}</span>` : ''
   const count = prs.length > 1 ? `<span class="multi-count">${prs.length}</span>` : ''
   // Always the picker, even for a single PR. It costs one click to reach the link, and
   // buys the row that opens the editor — which is what lets the toolbar drop its own
   // Edit button instead of carrying a second way to do the same thing.
-  return `<button class="act pill${prs.length > 1 ? ' multi' : ''} pr-${state}" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull request${prs.length > 1 ? 's' : ''}, ${PR_WORD[state]}" data-tip="${prs.length > 1 ? `${prs.length} PRs` : escapeHtml(prNumber(prs[0]))} · ${PR_WORD[state]}">${ICON_GITHUB}${glyph}${count}</button>`
+  const what = prs.length > 1 ? `${prs.length} PRs` : escapeHtml(prNumber(prs[0]))
+  const tip = speaks ? `${what} · ${PR_WORD[state]}` : `${what} · pick one`
+  return `<button class="act pill${prs.length > 1 ? ' multi' : ''}${speaks ? ` pr-${state}` : ''}" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull request${prs.length > 1 ? 's' : ''}${speaks ? `, ${PR_WORD[state]}` : ''}" data-tip="${tip}">${ICON_GITHUB}${glyph}${count}</button>`
 }
 
 
@@ -849,10 +857,12 @@ function openLinkMenu(anchor, menu) {
     // the pill already said instead of restating it in words.
     menu.items.map((it, i) =>
       `<button class="board-menu-item" data-link-open="${i}"${it.url ? '' : ' disabled'}>` +
-      (it.state
+      // No state known → the plain mark, no glyph. A ◌ on every row would announce
+      // "unknown" over and over, which is noise rather than information.
+      (showsState(it.state)
         ? `<span class="menu-mark pr-${it.state}" title="${escapeHtml(it.word || PR_WORD[it.state])}">` +
           `${menu.kind === 'pr' ? ICON_GITHUB : ICON_TICKET}<span class="pr-glyph">${PR_GLYPH[it.state]}</span></span>`
-        : `<span class="board-menu-check">›</span>`) +
+        : `<span class="menu-mark">${menu.kind === 'pr' ? ICON_GITHUB : ICON_TICKET}</span>`) +
       `<span class="board-menu-name">${escapeHtml(it.label)}</span>` +
       // A ticket shows its tracker's own status word; a PR's state is already in the mark.
       (it.word ? `<span class="menu-status">${escapeHtml(it.word)}</span>` : '') +

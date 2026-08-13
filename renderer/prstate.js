@@ -12,8 +12,7 @@
   const GLYPH = { open: '●', draft: '◍', merged: '✔', closed: '✕', unknown: '◌' }
   const WORD = { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' }
 
-  // Lower ranks win. Open outranks merged because open is the one that still needs you;
-  // unknown ranks last so a single un-synced PR never masks a state we do know.
+  // Kept for callers that need to order states; the summary below does NOT use it.
   const RANK = { open: 0, draft: 1, closed: 2, merged: 3, unknown: 4 }
 
   const STATES = ['open', 'draft', 'merged', 'closed']
@@ -26,11 +25,22 @@
     return STATES.includes(s) ? s : 'unknown'
   }
 
-  // The one state that represents a whole session: its most demanding PR.
-  function sessionState(status, urls) {
+  // The state of a whole set — but ONLY when they agree. Picking the "most demanding" one
+  // instead was actively misleading: three PRs of which one was closed showed a cross
+  // reading "closed", when two were still open. Disagreement returns `mixed`, and the
+  // caller shows no state at all: one icon cannot honestly summarise three answers, and
+  // the picker is one click away.
+  function summaryState(status, urls) {
     const list = (urls || []).map((u) => stateOf(status, u))
     if (!list.length) return 'unknown'
-    return list.reduce((a, b) => (RANK[b] < RANK[a] ? b : a))
+    return list.every((s) => s === list[0]) ? list[0] : 'mixed'
+  }
+
+  // Same rule for any list of already-resolved states (ticket families).
+  function summaryOf(states) {
+    const list = states || []
+    if (!list.length) return 'unknown'
+    return list.every((s) => s === list[0]) ? list[0] : 'mixed'
   }
 
   // ── Tickets ──────────────────────────────────────────────────────────────────
@@ -73,5 +83,5 @@
     return out
   }
 
-  return { GLYPH, WORD, RANK, STATES, stateOf, sessionState, ticketFamily, ticketStateMap }
+  return { GLYPH, WORD, RANK, STATES, stateOf, summaryState, summaryOf, ticketFamily, ticketStateMap }
 })

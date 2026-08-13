@@ -20,30 +20,42 @@ describe('stateOf', () => {
   })
 })
 
-describe('sessionState', () => {
+describe('summaryState', () => {
   it('is unknown when the session has no PR', () => {
-    expect(P.sessionState({}, [])).toBe('unknown')
+    expect(P.summaryState({}, [])).toBe('unknown')
   })
-  it('lets an open PR outrank a merged one', () => {
-    // Open is the one that still needs you — it must survive the summary.
-    const s = st({ [A]: { state: 'merged' }, [B]: { state: 'open' } })
-    expect(P.sessionState(s, [A, B])).toBe('open')
+  it('speaks only when every PR agrees', () => {
+    const s = st({ [A]: { state: 'merged' }, [B]: { state: 'merged' } })
+    expect(P.summaryState(s, [A, B])).toBe('merged')
   })
-  it('prefers a known state over an un-synced one', () => {
+  it('is mixed when they disagree — one icon cannot summarise three answers', () => {
+    // Regression: a session with 3 PRs, one of them closed, showed a cross reading
+    // "closed" while two were still open.
+    const s = st({ [A]: { state: 'closed' }, [B]: { state: 'open' } })
+    expect(P.summaryState(s, [A, B])).toBe('mixed')
+  })
+  it('counts an un-synced PR as a disagreement, not as a state to ignore', () => {
     const s = st({ [A]: { state: 'merged' } })
-    expect(P.sessionState(s, [A, B])).toBe('merged')
+    expect(P.summaryState(s, [A, B])).toBe('mixed')
   })
-  it('ranks draft below open but above closed and merged', () => {
-    const s = st({ [A]: { state: 'draft' }, [B]: { state: 'closed' } })
-    expect(P.sessionState(s, [A, B])).toBe('draft')
-  })
-  it('is unknown when nothing has been synced', () => {
-    expect(P.sessionState({}, [A, B])).toBe('unknown')
+  it('is unknown when nothing has been synced at all', () => {
+    expect(P.summaryState({}, [A, B])).toBe('unknown')
   })
   it('does not depend on the order of the links', () => {
     const s = st({ [A]: { state: 'closed' }, [B]: { state: 'open' } })
-    expect(P.sessionState(s, [A, B])).toBe(P.sessionState(s, [B, A]))
+    expect(P.summaryState(s, [A, B])).toBe(P.summaryState(s, [B, A]))
   })
+  it('reports a lone PR as itself', () => {
+    expect(P.summaryState(st({ [A]: { state: 'open' } }), [A])).toBe('open')
+  })
+})
+
+describe('summaryOf', () => {
+  it('agrees or says mixed', () => {
+    expect(P.summaryOf(['open', 'open'])).toBe('open')
+    expect(P.summaryOf(['open', 'merged'])).toBe('mixed')
+  })
+  it('is unknown for an empty set', () => expect(P.summaryOf([])).toBe('unknown'))
 })
 
 describe('vocabulary', () => {
