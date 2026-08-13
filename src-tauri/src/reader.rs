@@ -525,7 +525,7 @@ pub(crate) fn resume_dir(launch_cwd: &str, notes_path: Option<&str>) -> String {
         return launch_cwd.to_string();
     };
     let broad = crate::config::home().canonicalize().is_ok_and(|h| h == here)
-        || crate::configured_roots().iter().any(|r| *r == here);
+        || crate::configured_roots().contains(&here);
     if broad { dir.to_string() } else { launch_cwd.to_string() }
 }
 
