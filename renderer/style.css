@@ -1255,10 +1255,12 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
    itself shifted everything after it — the PR numbers in a picker stopped lining up
    from one row to the next. */
 .pr-glyph {
-  font: 700 10px/1 system-ui;
   display: inline-flex; align-items: center; justify-content: center;
   width: 11px; flex: none;
 }
+.pr-glyph svg { width: 11px; height: 11px; display: block; stroke-width: 3; }
+/* Inside a chip the word carries the meaning, so the mark can be smaller. */
+.pr-chip .pr-glyph svg { width: 10px; height: 10px; }
 
 /* Detail panel (mock B): a labelled chip per PR, so nothing has to be learned. */
 .pr-list { display: flex; flex-direction: column; gap: 5px; }

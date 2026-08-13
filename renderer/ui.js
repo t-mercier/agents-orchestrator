@@ -112,7 +112,7 @@ function prStateRows(s) {
   const rows = prs.map(u => {
     const st = prStateOf(u)
     return `<div class="pr-row">` +
-      `<span class="pr-chip pr-${st}"><span class="pr-glyph">${PR_GLYPH[st]}</span>${PR_WORD[st]}</span>` +
+      `<span class="pr-chip pr-${st}"><span class="pr-glyph">${svgIcon(PR_GLYPH[st])}</span>${PR_WORD[st]}</span>` +
       `<button class="ref-link" data-url="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(prNumber(u))}</button>` +
       `</div>`
   }).join('')
@@ -684,7 +684,7 @@ function ticketPill(s) {
   // writing one — greying every ticket icon to say that would be noise, not information.
   const fam = ticketFamilyOfSession(s)
   const known = showsState(fam)
-  const glyph = known ? `<span class="pr-glyph">${PR_GLYPH[fam]}</span>` : ''
+  const glyph = known ? `<span class="pr-glyph">${svgIcon(PR_GLYPH[fam])}</span>` : ''
   const status = ticketStatusOf(s, tickets[0])
   return `<button class="act pill${tickets.length > 1 ? ' multi' : ''}${known ? ` pr-${fam}` : ''}" ${linkMenuAttrs('ticket', s)} aria-label="${tickets.length} ticket${tickets.length > 1 ? 's' : ''}" data-tip="${tickets.length > 1 ? `${tickets.length} tickets · pick one` : `${escapeHtml(tickets[0])}${status ? ` · ${escapeHtml(status)}` : ''}`}">${ICON_TICKET}${glyph}${count}</button>`
 }
@@ -716,7 +716,13 @@ window._prStatus = window._prStatus || {}
 // whole renderer, that one TypeError empties the entire window — which is exactly what
 // it did. A missing module now costs the PR marks, not the app.
 const PR_FALLBACK = {
-  GLYPH: { open: '●', draft: '✎', merged: '✔', closed: '✕', unknown: '◌' },
+  GLYPH: {
+    open: '<circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/>',
+    draft: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    merged: '<path d="M20 6 9 17l-5-5"/>',
+    closed: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    unknown: '<circle cx="12" cy="12" r="7" stroke-dasharray="3 3"/>',
+  },
   WORD: { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' },
   stateOf: () => 'unknown',
   summaryState: () => 'unknown',
@@ -750,7 +756,12 @@ function prPill(s) {
   if (!prs.length) return ''
   const state = prStateOfSession(s)
   const speaks = showsState(state)
-  const glyph = speaks ? `<span class="pr-glyph">${PR_GLYPH[state]}</span>` : ''
+  // `unknown` gets its dotted ring: a grey icon with no mark at all cannot say whether
+  // it has never been synced or whether the PRs merely disagree. `mixed` stays bare —
+  // there the picker is the honest answer.
+  const glyph = (speaks || state === 'unknown')
+    ? `<span class="pr-glyph">${svgIcon(PR_GLYPH[state])}</span>`
+    : ''
   const count = prs.length > 1 ? `<span class="multi-count">${prs.length}</span>` : ''
   // Always the picker, even for a single PR. It costs one click to reach the link, and
   // buys the row that opens the editor — which is what lets the toolbar drop its own
@@ -859,9 +870,11 @@ function openLinkMenu(anchor, menu) {
       `<button class="board-menu-item" data-link-open="${i}"${it.url ? '' : ' disabled'}>` +
       // No state known → the plain mark, no glyph. A ◌ on every row would announce
       // "unknown" over and over, which is noise rather than information.
-      (showsState(it.state)
+      // In a picker each row is one link, so `unknown` is worth stating there too — it
+      // is per-PR, not a summary that had to give up.
+      ((showsState(it.state) || it.state === 'unknown')
         ? `<span class="menu-mark pr-${it.state}" title="${escapeHtml(it.word || PR_WORD[it.state])}">` +
-          `${menu.kind === 'pr' ? ICON_GITHUB : ICON_TICKET}<span class="pr-glyph">${PR_GLYPH[it.state]}</span></span>`
+          `${menu.kind === 'pr' ? ICON_GITHUB : ICON_TICKET}<span class="pr-glyph">${svgIcon(PR_GLYPH[it.state])}</span></span>`
         : `<span class="menu-mark">${menu.kind === 'pr' ? ICON_GITHUB : ICON_TICKET}</span>`) +
       `<span class="board-menu-name">${escapeHtml(it.label)}</span>` +
       // A ticket shows its tracker's own status word; a PR's state is already in the mark.

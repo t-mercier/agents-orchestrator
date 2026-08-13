@@ -9,7 +9,17 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api
   else root.CSMPrState = api
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  const GLYPH = { open: '●', draft: '✎', merged: '✔', closed: '✕', unknown: '◌' }
+  // SVG paths, not Unicode characters. `✎` and `◌` are dingbats absent from SF Pro, so
+  // macOS either substituted another face or drew nothing at all — draft and un-synced
+  // simply had no visible mark. Every other icon in this app is an SVG for the same
+  // reason. The caller wraps these in a 24×24 viewBox.
+  const GLYPH = {
+    open: '<circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/>',
+    draft: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    merged: '<path d="M20 6 9 17l-5-5"/>',
+    closed: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+    unknown: '<circle cx="12" cy="12" r="7" stroke-dasharray="3 3"/>',
+  }
   const WORD = { open: 'open', draft: 'draft', merged: 'merged', closed: 'closed', unknown: 'not synced' }
 
   // Kept for callers that need to order states; the summary below does NOT use it.
