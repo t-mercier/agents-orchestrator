@@ -184,7 +184,7 @@ function pinBtn(s) {
 // Close button — only on STALE sessions (in the Running tab: terminal gone, never
 // /close-session'd). Click → confirm → a real wrap-up (wrap_session resumes the session
 // headless so /wrap-session can summarise it), falling back to the plain close marker.
-// Only stale: a session with a live terminal must close through its own "End session ✕",
+// Only stale: a session with a live terminal must close through its own "Close session ✕",
 // since resuming a running conversation forks it.
 // The data- payload the close handler reads, shared by the list card's hover icon and the
 // detail panel's verb. The session id is only passed when it can actually be resumed —

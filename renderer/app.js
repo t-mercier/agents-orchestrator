@@ -423,7 +423,7 @@ function selectSession(key) {
   // Switching sessions must NOT kill the embedded terminal — keep the pty alive
   // so sessions run in parallel. If the newly selected session already has a live
   // terminal, reveal it; otherwise just hide the pane (the previous pty keeps
-  // running in the background). Only "End session ✕" kills.
+  // running in the background). Only "Close session ✕" kills.
   if (changing) {
     const sel = selectedKey && sessions.find(s => sessionKey(s) === selectedKey)
     // A session has at most one live embedded pty. liveTerminalKeyFor finds it by notes.md
@@ -519,7 +519,7 @@ function setViewMode(mode) {
 
 // Close the board's slide-over drawer
 function closeDrawer() {
-  // Dismissing the drawer only hides the terminal (pty stays alive); "End session ✕" kills.
+  // Dismissing the drawer only hides the terminal (pty stays alive); "Close session ✕" kills.
   if (window.getTerminalVisible && window.getTerminalVisible()) window.hideTerminalPane()
   selectedKey = null
   window._lastSelectedKey = null

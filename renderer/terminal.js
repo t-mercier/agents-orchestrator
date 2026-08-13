@@ -314,10 +314,10 @@ function killTerminal(sid) {
   }
 }
 
-// "End session ✕": close the session WITH an AI wrap-up, then end it. Injects
+// "Close session ✕": close the session WITH an AI wrap-up, then end it. Injects
 // /close-session into the live pty so claude writes the full summary to notes.md, polls
 // until that close is recorded, then kills the pty → the session lands in Closed (not
-// stale). Wired only to the explicit "End session ✕" button — switch / ⌨ toggle / drawer
+// stale). Wired only to the explicit "Close session ✕" button — switch / ⌨ toggle / drawer
 // close merely hide (pty stays alive). Falls back to a plain kill for an unmanaged session
 // (no notes.md), and offers "end anyway" if the wrap-up never lands (e.g. plan mode).
 // Guarantee the session lands in Closed: if /close-session didn't write a fresh wrap-up
@@ -375,7 +375,7 @@ function hasLiveTerminal(sessionId) {
 
 function toggleEmbeddedTerminal(sessionId, cwd, restartSlug = '', notesPath = '') {
   if (terminalVisible && activeTerminalSession === sessionId) {
-    hideTerminalPane()   // background it (pty stays alive); "End session ✕" kills
+    hideTerminalPane()   // background it (pty stays alive); "Close session ✕" kills
   } else {
     openTerminalPane(sessionId, cwd, restartSlug, '', notesPath)
   }

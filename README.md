@@ -41,7 +41,7 @@ Nothing moves on its own — you close, you archive.
 | **＋ New** | Creates the workspace + its `notes.md`, registers the session, launches it. **Start here** — you never need the terminal first. |
 | **Resume** | Relaunches a session the app already manages. |
 | **Adopt** | For a session you started outside the app (listed under *Recent · unmanaged*): relaunches it **and** creates its `notes.md` + registers it. One-time; after that it's just Resume. |
-| **End session ✕** | Wraps it up with a summary → Closed. |
+| **Close session ✕** | Wraps it up with a summary → Closed. |
 
 Two things that save pain: a session's **`notes.md` is its memory** (it survives compaction —
 `/save-session` checkpoints it, `/close-session` wraps it up), and **one session = one process**
