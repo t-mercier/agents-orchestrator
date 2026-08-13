@@ -102,10 +102,10 @@ function refLinks(values, hrefOf, labelOf = (v) => v) {
   }).join('<span class="ref-sep">·</span>')
 }
 
-// The detail panel's PR list (mock B): one labelled chip per PR, plus the Sync button and
-// the age of what you are reading. The age is not a nicety — Sync is manual, so every
-// state on screen is a cached answer, and a stale one you believe is live is worse than
-// no state at all.
+// The detail panel's PR list (mock B): one labelled chip per PR, and the age of what you
+// are reading. The age is not a nicety — Sync is manual, so every state on screen is a
+// cached answer, and a stale one you believe is live is worse than no state at all.
+// The Sync button itself lives in the Actions row (syncBtn), next to the other verbs.
 function prStateRows(s) {
   const prs = prLinksOf(s)
   const synced = prs.map(u => (window._prStatus[u] || {}).checkedAt).filter(Boolean).sort()
@@ -113,14 +113,23 @@ function prStateRows(s) {
     const st = prStateOf(u)
     return `<div class="pr-row">` +
       `<span class="pr-chip pr-${st}"><span class="pr-glyph">${PR_GLYPH[st]}</span>${PR_WORD[st]}</span>` +
-      `<button class="ref-link" data-url="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(prLabel(u))}</button>` +
+      `<button class="ref-link" data-url="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(prNumber(u))}</button>` +
       `</div>`
   }).join('')
-  const when = synced.length ? `<span class="pr-synced">synced ${escapeHtml(synced[0])}</span>` : ''
-  return `<div class="pr-list">${rows}` +
-    `<div class="pr-sync-row">${when}` +
-    `<button class="pr-sync" data-sync-prs="${escapeHtml(prs.join(' '))}" data-tip="Ask GitHub for the current state — the only network call this app makes">⟳ Sync</button>` +
-    `</div></div>`
+  const when = synced.length
+    ? `<div class="pr-synced">synced ${escapeHtml(synced[0])}</div>`
+    : `<div class="pr-synced">never synced</div>`
+  return `<div class="pr-list">${rows}${when}</div>`
+}
+
+// Sync sits with the actions, not with the data it refreshes: it is a verb, and it is the
+// only thing in this app that touches the network. Only rendered when there is something
+// to ask about.
+function syncBtn(s) {
+  const prs = prLinksOf(s)
+  if (!prs.length) return ''
+  return `<button class="act" data-sync-prs="${escapeHtml(prs.join(' '))}" aria-label="Sync pull-request state"
+           data-tip="Ask GitHub for the current PR state — the only network call this app makes">${svgIcon('<path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.36-2.64L3 16"/><path d="M3 21v-5h5"/>')}</button>`
 }
 
 function buildMetaRows(s, isHistorical) {
@@ -621,6 +630,13 @@ function prLabel(url) {
   return m ? `${m[1]}/${m[2]}#${m[3]}` : (url || '')
 }
 
+// Just `#5107` — for lists that already sit inside one session, where the repo adds
+// nothing and the width is better spent on the state.
+function prNumber(url) {
+  const m = /\/pull\/(\d+)/.exec(url || '')
+  return m ? `#${m[1]}` : prLabel(url)
+}
+
 const ticketUrl = (t) => {
   const base = (window.CSM_CONFIG && window.CSM_CONFIG.ticketBaseUrl) || ''
   return base ? base + t : ''
@@ -643,8 +659,10 @@ function linkMenuFor(s, kind) {
       items: tickets.map(t => ({ label: t, url: ticketUrl(t) })) }
   }
   const prs = prLinksOf(s)
+  // The number alone, not owner/repo#number: inside a session's own picker the repo is
+  // never in question, and the full URL just pushed the state chip off the row.
   return { kind, head: `Pull requests · ${prs.length}`, notesPath: s.notesPath || '',
-    items: prs.map(u => ({ label: prLabel(u), url: u })) }
+    items: prs.map(u => ({ label: prNumber(u), url: u, state: prStateOf(u) })) }
 }
 
 function ticketPill(s) {
@@ -653,11 +671,10 @@ function ticketPill(s) {
   // is configured (Jira, Linear, GitHub Issues, Azure DevOps…). Without one, a dead
   // icon just confuses; the ticket id still shows in the detail meta row.
   if (!tickets.length || !ticketUrl(tickets[0])) return ''
-  if (tickets.length === 1) {
-    const t = tickets[0]
-    return `<button class="act pill" data-url="${escapeHtml(ticketUrl(t))}" aria-label="${escapeHtml(t)}" data-tip="${escapeHtml(t)} · open ticket">${ICON_TICKET}</button>`
-  }
-  return `<button class="act pill multi" ${linkMenuAttrs('ticket', s)} aria-label="${tickets.length} tickets" data-tip="${tickets.length} tickets · pick one">${ICON_TICKET}<span class="multi-count">${tickets.length}</span></button>`
+  // The picker for one ticket too — same reason as prPill: its last row is the editor,
+  // which is now the only way in.
+  const count = tickets.length > 1 ? `<span class="multi-count">${tickets.length}</span>` : ''
+  return `<button class="act pill${tickets.length > 1 ? ' multi' : ''}" ${linkMenuAttrs('ticket', s)} aria-label="${tickets.length} ticket${tickets.length > 1 ? 's' : ''}" data-tip="${tickets.length > 1 ? `${tickets.length} tickets · pick one` : `${escapeHtml(tickets[0])} · open ticket`}">${ICON_TICKET}${count}</button>`
 }
 
 // Ticket as a NUMBER label (e.g. FEAT-1842) for list + card views — the id reads at a
@@ -705,10 +722,11 @@ function prPill(s) {
   if (!prs.length) return ''
   const state = prStateOfSession(s)
   const glyph = `<span class="pr-glyph">${PR_GLYPH[state]}</span>`
-  if (prs.length === 1) {
-    return `<button class="act pill pr-${state}" data-url="${escapeHtml(prs[0])}" aria-label="Pull request, ${PR_WORD[state]}" data-tip="${escapeHtml(prLabel(prs[0]))} · ${PR_WORD[state]}">${ICON_GITHUB}${glyph}</button>`
-  }
-  return `<button class="act pill multi pr-${state}" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull requests, ${PR_WORD[state]}" data-tip="${prs.length} PRs · pick one">${ICON_GITHUB}${glyph}<span class="multi-count">${prs.length}</span></button>`
+  const count = prs.length > 1 ? `<span class="multi-count">${prs.length}</span>` : ''
+  // Always the picker, even for a single PR. It costs one click to reach the link, and
+  // buys the row that opens the editor — which is what lets the toolbar drop its own
+  // Edit button instead of carrying a second way to do the same thing.
+  return `<button class="act pill${prs.length > 1 ? ' multi' : ''} pr-${state}" ${linkMenuAttrs('pr', s)} aria-label="${prs.length} pull request${prs.length > 1 ? 's' : ''}, ${PR_WORD[state]}" data-tip="${prs.length > 1 ? `${prs.length} PRs` : escapeHtml(prNumber(prs[0]))} · ${PR_WORD[state]}">${ICON_GITHUB}${glyph}${count}</button>`
 }
 
 
@@ -805,7 +823,10 @@ function openLinkMenu(anchor, menu) {
     `<div class="board-menu-head">${escapeHtml(menu.head)}</div>` +
     menu.items.map((it, i) =>
       `<button class="board-menu-item" data-link-open="${i}"${it.url ? '' : ' disabled'}>` +
-      `<span class="board-menu-check">›</span><span class="board-menu-name">${escapeHtml(it.label)}</span></button>`
+      (it.state
+        ? `<span class="pr-chip pr-${it.state}"><span class="pr-glyph">${PR_GLYPH[it.state]}</span>${PR_WORD[it.state]}</span>`
+        : `<span class="board-menu-check">›</span>`) +
+      `<span class="board-menu-name">${escapeHtml(it.label)}</span></button>`
     ).join('') +
     // Editing needs a writable notes.md — an unmanaged session has none.
     (menu.notesPath
@@ -1045,14 +1066,17 @@ function renderDetailPanel(s, tab = 'running') {
   // PR / notes / board) ride on the title line; the name (flex:1) ellipsizes to make room.
   const showBadge = isHistorical || (!!s.status && s.status !== 'idle')
   const termOpen = window.getTerminalVisible && window.getTerminalVisible()
-  // Edit rides on the header too: with the terminal up, the ticket/PR icons are hidden
-  // whenever the session has none attached — which is exactly when the user needs to
-  // attach one (a PR opened mid-session only lands in notes.md at the next /save-session).
-  const editBtn = s.notesPath
-    ? `<button class="act" data-edit-refs="${escapeHtml(s.notesPath)}" aria-label="Edit session details" data-tip="Edit PRs & tickets">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')}</button>`
+  // Edit is the fallback, not a second door: the ticket and PR pickers each end in
+  // "Add / edit…", so the button only earns its place when NEITHER picker exists —
+  // a session with nothing attached, which is exactly when you need to attach the first
+  // one (a PR opened mid-session lands in notes.md only at the next /save-session).
+  const hasPickers = !!(prPill(s) || ticketPill(s))
+  const editBtn = (s.notesPath && !hasPickers)
+    ? `<button class="act" data-edit-refs="${escapeHtml(s.notesPath)}" aria-label="Attach a PR or ticket" data-tip="Attach a PR or ticket">${svgIcon('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>')}</button>`
     : ''
+  const sync = syncBtn(s)
   const headerActions = termOpen
-    ? [infoPill(), ticketPill(s), prPill(s), notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
+    ? [infoPill(), ticketPill(s), prPill(s), sync, notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
     : ''
   setHtml(headerEl, `
     <div class="detail-header-row">
@@ -1100,7 +1124,7 @@ function renderDetailPanel(s, tab = 'running') {
   // The ticket / PR icons belong here even though the meta rows list the same links:
   // those rows sit at the top of a pane you have usually scrolled past by the time you
   // reach this row, so dropping them from the toolbar simply lost the shortcut.
-  const refs = [ticketPill(s), prPill(s), notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
+  const refs = [ticketPill(s), prPill(s), sync, notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
   const actions = launch + (launch && refs ? '<span class="act-sep"></span>' : '') + refs
 
   setHtml(infoEl, `
