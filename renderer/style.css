@@ -1230,7 +1230,8 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 .close-btn:hover { opacity: 1 !important; color: var(--status-busy, var(--accent)); }
 /* A close that wraps up first takes up to a minute. The button is hover-revealed, so
    without this the only feedback vanishes the moment the pointer moves away. */
-.close-btn.busy {
+.close-btn.busy,
+.act-verb.busy {
   opacity: 1 !important;
   color: var(--status-busy, var(--accent));
   cursor: progress;

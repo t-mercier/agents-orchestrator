@@ -186,10 +186,17 @@ function pinBtn(s) {
 // headless so /wrap-session can summarise it), falling back to the plain close marker.
 // Only stale: a session with a live terminal must close through its own "End session ✕",
 // since resuming a running conversation forks it.
+// The data- payload the close handler reads, shared by the list card's hover icon and the
+// detail panel's verb. The session id is only passed when it can actually be resumed —
+// without a transcript there is nothing to summarise, so the plain marker is all we can do.
+function closeAttrs(s) {
+  return `data-close-notes="${escapeHtml(s.notesPath)}" data-close-name="${escapeHtml(s.name || '')}"` +
+    ` data-close-sid="${escapeHtml(canResume(s) ? (s.sessionId || '') : '')}" data-close-cwd="${escapeHtml(s.cwd || '')}"`
+}
+
 function closeBtn(s) {
   if (!s.notesPath || s.state !== 'stale') return ''
-  return `<button class="close-btn" data-close-notes="${escapeHtml(s.notesPath)}" data-close-name="${escapeHtml(s.name || '')}"
-           data-close-sid="${escapeHtml(canResume(s) ? (s.sessionId || '') : '')}" data-close-cwd="${escapeHtml(s.cwd || '')}"
+  return `<button class="close-btn" ${closeAttrs(s)}
            title="Close this session (move to Closed)" aria-label="Close this session"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg></button>`
 }
 
@@ -947,6 +954,15 @@ function resumeBtn(s) {
 // offered when Resume is NOT possible (no session id, or the .jsonl is gone) — where
 // Resume works it is strictly better, and a compaction already resets the context, so
 // two buttons only made the choice harder.
+// Close as a labelled verb, for the detail panel's Actions row. The list card carries the
+// same action as a hover icon; here it sits next to Resume, which is where you look after
+// deciding a stale session is done.
+function closeVerb(s) {
+  if (!s.notesPath || s.state !== 'stale') return ''
+  return `<button class="act-verb" ${closeAttrs(s)}
+           data-tip="Wrap it up and move it to Closed">${svgIcon('<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>')}Close</button>`
+}
+
 function restartBtn(s) {
   if (canResume(s)) return ''
   const slug = slugOf(s)
@@ -1030,11 +1046,16 @@ function renderDetailPanel(s, tab = 'running') {
   // reference actions (ticket / PR / notes / board).
   const resume = resumeBtn(s)
   const restart = restartBtn(s)
-  // Only show the destination toggle when there's at least one verb to apply it to.
-  const launch = (resume || restart) ? [destinationToggle(), resume, restart].filter(Boolean).join('') : ''
-  // References are listed in the meta rows above, so the toolbar keeps only the links
-  // that open something plus ONE Edit — a ✎ per field made this row a wall of buttons.
-  const refs = [notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
+  const close = closeVerb(s)
+  // Only show the destination toggle when there's at least one launch verb to apply it
+  // to — Close is not one, it never opens a terminal.
+  const launch = (resume || restart || close)
+    ? [(resume || restart) ? destinationToggle() : '', resume, restart, close].filter(Boolean).join('')
+    : ''
+  // The ticket / PR icons belong here even though the meta rows list the same links:
+  // those rows sit at the top of a pane you have usually scrolled past by the time you
+  // reach this row, so dropping them from the toolbar simply lost the shortcut.
+  const refs = [ticketPill(s), prPill(s), notesPill(s.notesPath), boardPill(s), editBtn].filter(Boolean).join('')
   const actions = launch + (launch && refs ? '<span class="act-sep"></span>' : '') + refs
 
   setHtml(infoEl, `
@@ -1327,7 +1348,9 @@ function installDelegatedHandlers() {
     // Close (stale → Closed). With a resumable session id, wrap_session resumes it
     // headless so /wrap-session writes a real summary — that takes a while, hence the
     // spinner. Without one (transcript gone), only the plain marker is possible.
-    const close = e.target.closest('.close-btn[data-close-notes]')
+    // Matched by attribute, not class: the list card renders a hover icon and the detail
+    // panel a labelled verb, and both must reach this handler.
+    const close = e.target.closest('[data-close-notes]')
     if (close) {
       e.stopPropagation()
       const notes = close.dataset.closeNotes
