@@ -1263,7 +1263,15 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
 
 /* Detail panel (mock B): a labelled chip per PR, so nothing has to be learned. */
 .pr-list { display: flex; flex-direction: column; gap: 6px; }
-.pr-row { display: flex; align-items: center; gap: 7px; }
+.pr-row { display: flex; align-items: center; gap: 7px; min-width: 0; }
+/* The link is number + title: the number never shrinks, the title takes what is left
+   and ellipsizes, so a long PR name cannot push the row out of the panel. */
+.pr-row .ref-link { display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; }
+.pr-num { flex: none; font-variant-numeric: tabular-nums; }
+.pr-title {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text-secondary); font-weight: 400;
+}
 .pr-chip {
   display: inline-flex; align-items: center; gap: 5px;
   font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;

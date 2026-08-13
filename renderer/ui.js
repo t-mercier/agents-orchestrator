@@ -111,10 +111,16 @@ function prStateRows(s) {
   const synced = prs.map(u => (window._prStatus[u] || {}).checkedAt).filter(Boolean).sort()
   const rows = prs.map(u => {
     const st = prStateOf(u)
+    // "#5107 Fix the orphaned instruction source" — the number identifies it, the title
+    // says what it is. The title only exists once synced, so the row degrades to the
+    // number alone rather than showing an empty gap.
+    const title = (window._prStatus[u] || {}).title || ''
     return `<div class="pr-row">` +
       `<span class="pr-chip pr-${st}"><span class="pr-glyph">${svgIcon(PR_GLYPH[st])}</span>${PR_WORD[st]}</span>` +
-      `<button class="ref-link" data-url="${escapeHtml(u)}" title="${escapeHtml(u)}">${escapeHtml(prNumber(u))}</button>` +
-      `</div>`
+      `<button class="ref-link" data-url="${escapeHtml(u)}" title="${escapeHtml(title || u)}">` +
+      `<span class="pr-num">${escapeHtml(prNumber(u))}</span>` +
+      (title ? `<span class="pr-title">${escapeHtml(title)}</span>` : '') +
+      `</button></div>`
   }).join('')
   const when = synced.length
     ? `<div class="pr-synced">synced ${escapeHtml(synced[0])}</div>`

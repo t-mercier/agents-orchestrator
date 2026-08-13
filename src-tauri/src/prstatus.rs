@@ -87,7 +87,7 @@ fn run(inner: &str) -> Result<String, String> {
     }
 }
 
-/// Everything we know about the PRs, as `{url: {state, checkedAt}}`. Read at startup so
+/// Everything we know about the PRs, as `{url: {state, title, checkedAt}}`. Read at startup so
 /// the marks are coloured before the first Sync of the session; an absent or corrupt
 /// cache is simply an empty map (every PR then reads as `unknown`, which is honest).
 #[tauri::command(async)]
@@ -123,16 +123,25 @@ pub fn sync_pr_status(urls: Vec<String>) -> Result<Value, String> {
     for url in urls {
         let Some((repo, number)) = parse_pr_url(&url) else { continue };
         let inner = format!(
-            "gh pr view {} --repo {} --json state,isDraft",
+            "gh pr view {} --repo {} --json state,isDraft,title",
             crate::pty::shell_quote(&number),
             crate::pty::shell_quote(&repo),
         );
-        let state = run(&inner)
-            .ok()
-            .and_then(|out| serde_json::from_str::<Value>(&out).ok())
-            .map(|v| state_of(&v))
-            .unwrap_or("unknown");
-        cache.insert(url, json!({ "state": state, "checkedAt": now }));
+        let gh = run(&inner).ok().and_then(|out| serde_json::from_str::<Value>(&out).ok());
+        let state = gh.as_ref().map(state_of).unwrap_or("unknown");
+        // The title rides along in the same call — a PR number alone says nothing about
+        // what the PR is. Kept from the previous sync when this one failed, since a
+        // title does not go stale the way a state does.
+        let title = gh
+            .as_ref()
+            .and_then(|v| v.get("title"))
+            .and_then(Value::as_str)
+            .map(String::from)
+            .or_else(|| {
+                cache.get(&url).and_then(|e| e.get("title")).and_then(Value::as_str).map(String::from)
+            })
+            .unwrap_or_default();
+        cache.insert(url, json!({ "state": state, "title": title, "checkedAt": now }));
     }
     let body = Value::Object(cache);
     // Best-effort: a cache we could not persist still gets returned, so this Sync works
