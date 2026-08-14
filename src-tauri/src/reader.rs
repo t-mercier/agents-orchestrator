@@ -1367,7 +1367,14 @@ fn scan_historical() -> Vec<Value> {
             // renderer takes the MORE RECENT of updatedAt vs lastActivityAt for the age
             // pill, so a same-day Pause doesn't display a days-old "last activity").
             let last_activity_at = tr.as_ref().and_then(|t| t.last_activity_at.clone());
-            let cwd = tr.and_then(|t| t.launch_cwd).unwrap_or(root_dir);
+            // Same narrowing as the running path (resume_dir): a session recorded at the
+            // home or a space root would otherwise be relaunched there, which is what made
+            // macOS ask for file access on every single resume. Closed and Archived
+            // sessions get resumed too — they were missed the first time round.
+            let cwd = resume_dir(
+                &tr.and_then(|t| t.launch_cwd).unwrap_or(root_dir),
+                Some(notes_path.as_str()),
+            );
 
             let last_summary = last_history_summary(&content);
 
@@ -1443,6 +1450,15 @@ mod tests {
         let home_s = home.to_string_lossy().to_string();
         let notes = format!("{home_s}/PERSO/my-session/notes.md");
         assert_eq!(resume_dir(&home_s, Some(&notes)), format!("{home_s}/PERSO/my-session"));
+    }
+
+    /// The running path got resume_dir first; Closed and Archived kept the root, so a
+    /// resume from those tabs still opened on the whole home.
+    #[test]
+    fn resume_dir_applies_to_a_historical_session_too() {
+        let home = crate::config::home().to_string_lossy().to_string();
+        let notes = format!("{home}/timothee/PERSO/s/notes.md");
+        assert_eq!(resume_dir(&home, Some(&notes)), format!("{home}/timothee/PERSO/s"));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 {
   "name": "ai-agents-orchestrator",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Live mission control for all your parallel Claude Code sessions — a native desktop dashboard for macOS & Linux.",
   "license": "SEE LICENSE IN LICENSE",
   "homepage": "https://github.com/t-mercier/ai-agents-orchestrator",

@@ -8,7 +8,7 @@
 
 [![Live site](https://img.shields.io/badge/%F0%9F%8C%90%20Live%20site-visit-9b8cff?style=for-the-badge)](https://t-mercier.github.io/ai-agents-orchestrator/)
 
-[![Version](https://img.shields.io/badge/version-0.8.1--alpha-9b8cff)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.8.2--alpha-9b8cff)](CHANGELOG.md)
 [![CI](https://img.shields.io/github/actions/workflow/status/t-mercier/ai-agents-orchestrator/ci.yml?branch=master)](https://github.com/t-mercier/ai-agents-orchestrator/actions)
 [![License: Source Available](https://img.shields.io/badge/license-Source%20Available-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-13+-000000?style=flat&logo=apple)](https://www.apple.com/macos/)
@@ -59,7 +59,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > ## What's new
 > Newest first — full history in the [changelog](CHANGELOG.md).
 >
-> - 📂 **A session starts in its own folder, not your whole home** — both launch paths handed over the space root, so a space rooted at `~` opened Claude Code on the entire home: a macOS file-access prompt per protected folder, every single time. A new session now starts in its category's folder, and Resume relaunches in the session's own folder when the recorded one is that broad.
+> - 📂 **A session starts in its own folder, not your whole home** — both launch paths handed over the space root, so a space rooted at `~` opened Claude Code on the entire home: a macOS file-access prompt per protected folder, every single time. A new session now starts in its category's folder, and Resume relaunches in the session's own folder when the recorded one is that broad — from every tab, Closed and Archived included.
 > - 🔀 **A PR tells you whether it is open, merged or closed** — the GitHub mark is tinted by state in the list and on the board, and the detail panel spells each PR out with its title. State comes from `gh` when you press **Sync** — no timer, no background traffic: the button *is* the opt-in, so the promise is "zero network until you press Sync".
 > - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Only the colour is folded into the same families as a PR, so one grammar covers both. Written into the notes by the session skills; the app holds no tracker credentials.
 > - ✅ **Close wraps a stale session up for real** — it resumes the session headless and lets the new `/wrap-session` write the summary and attach the PRs, without opening a terminal. It always ends Closed: if the summary fails, the plain marker is stamped anyway.

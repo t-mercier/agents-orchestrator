@@ -10,6 +10,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.2-alpha] - 2026-08-14
+
+### Fixed
+- **Resuming a Closed or Archived session also stops opening on your home** — 0.8.1
+  narrowed the working directory for running sessions and left the historical ones on the
+  space root, so a resume from those two tabs still handed over the whole home and macOS
+  still asked for file access, folder by folder. Both paths now go through the same rule.
+
 ## [0.8.1-alpha] - 2026-08-13
 
 ### Fixed
