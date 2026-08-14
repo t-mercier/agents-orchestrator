@@ -10,6 +10,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.1-alpha] - 2026-08-13
+
 ### Fixed
 - **A session no longer gets handed the whole space root** — both launch paths used the
   root as the working directory, and for a space rooted at `~` that is the entire home:
