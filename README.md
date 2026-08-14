@@ -57,34 +57,15 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 
 > [!NOTE]
 > ## What's new
-> Newest first — full history in the [changelog](CHANGELOG.md).
 >
-> - 📂 **A session opens at the root of its space** — one rule, every session, both launch paths. The working directory used to come from wherever `claude` was first started, so moving a space in Settings left its older sessions opening at the old place. It now follows the space, which is what you configure and what you can change.
-> - 🔀 **A PR tells you whether it is open, merged or closed** — the GitHub mark is tinted by state in the list and on the board, and the detail panel spells each PR out with its title. State comes from `gh` when you press **Sync** — no timer, no background traffic: the button *is* the opt-in, so the promise is "zero network until you press Sync".
-> - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Only the colour is folded into the same families as a PR, so one grammar covers both. Written into the notes by the session skills; the app holds no tracker credentials.
-> - ✅ **Close wraps a stale session up for real** — it resumes the session headless and lets the new `/wrap-session` write the summary and attach the PRs, without opening a terminal. It always ends Closed: if the summary fails, the plain marker is stamped anyway.
-> - ↩️ **Restart only shows when Resume cannot** — where Resume works it is strictly better, and a compaction already resets the context.
-> - 🔗 **A PR you open mid-session attaches itself** — an opt-in hook reads the URL `gh pr create` prints and appends it to the session's notes, so it shows on the card without waiting for the next checkpoint. `bash scripts/install.sh --with-hooks`.
-> - 🧠 **The knowledge notes fill as you work** — `/learn` writes a note the moment something durable comes up, instead of waiting for a session close that often never happens. It extends an existing note rather than adding a near-duplicate, and announces every write in one line — no approval prompt, because a prompt at every insight would defeat the point.
-> - 🔗 **Links in the embedded terminal are clickable** — Claude Code prints a PR it just opened as an OSC 8 hyperlink; those are now clickable in the in-app terminal, with the target's scheme checked before anything is handed to the OS.
-> - 📋 **PRs and tickets listed in the detail panel** — each on its own row and clickable, behind a single **Edit** button instead of a pencil per field.
-> - 📥 **Browse every untracked session** — the *Recent · unmanaged* list is no longer capped at what fits: page through all of them, or adopt one straight from its row.
-> - 🧠 **You don't need Obsidian for persistent memory** — the "vault" was always just a folder of Markdown, but the naming made everyone without Obsidian assume the feature wasn't for them. It is now **knowledge notes**: point a space at any folder. The config key `obsidian` became `knowledge`, with the old one still read, so nothing to change by hand.
-> - 🎓 **The skills can learn** — after a session that taught something reusable, `/skill-propose` stages it as a new skill or a patch to an existing one; `/skills-review` is the only way it goes live, and `/skills-curate` keeps the set from inflating. Nothing is auto-applied, nothing is ever deleted, and usage comes from your transcripts. Off unless you set `skillProposals: true`.
-> - 🔗 **Several PRs / tickets per session** — a task split across two PRs, or an epic plus its sub-task, no longer has to pick one. The icon shows a count and opens a picker; the editor takes one entry per line and works on any session, not just REVIEW.
-> - 📌 **Pinned sessions sit at the top of the column** — they used to float per space (and before that, per category), which defeated the point. One block at the top, just under ⚡ Needs you.
-> - 🧹 **Cards view removed** — it overlapped the Board without being as useful, so the app is List + Board. Card density stays, applied to the list cards.
-> - 📥 **"Recent · unmanaged" section + Adopt** — a lazy, collapsible section at the top of Running lists recent Claude Code sessions that aren't managed yet; one **Adopt** click resumes + registers them. (Replaces the old ＋Import button.)
-> - 🗂 **Reorder & group your list (drag)** — in the List view, drag to reorder your categories and sessions, and **group related sessions** (e.g. sub-tickets of a parent) by dragging one onto another, Kanban-style. Collapsible, colour-coded, renamable groups.
-> - 📊 **Usage bar → per-session** — the bar's **context %** and **model** now follow the **selected session** (the 5-hour & weekly windows stay account-global).
-> - ⚙️ **Config v2, auto-migrated** — named **spaces**, each with its own **knowledge-notes folder**. A legacy v1 config (work/personal roots + category `scope`) is migrated to v2 on first launch, with a backup kept. Nothing to do by hand.
-> - 📊 **Usage bar** — a slim bottom bar with your **model**, the **5-hour** & **weekly** rate-limit windows (with reset countdowns) and **context %**, right in the app. Automatic for sessions launched from the dashboard; never touches your global settings.
-> - 🖥 **"Claude Desktop" group** — live sessions opened from the Claude Desktop app now group on their own instead of the catch-all "OTHER".
-> - 📝 **Session summaries on cards** — cards & detail show the one-line summary written by `/save-session` · `/close-session`, not raw transcript output.
-> - 🔒 **Security & robustness audit** — a Fable-assisted hardening pass across the Rust backend (pid clamp, `fsync`'d atomic writes, delete-guards, single-source validators).
-> - 🧩 **Skills install themselves** — the app bundles the session skills and copies them into `~/.claude/skills/` on a click (a first-launch banner, or **Settings → Session skills**). A `.dmg`-only install no longer needs the repo + `install.sh`.
-> - 🐧 **Linux support** — runs on X11 & Wayland (verified on GNOME/Wayland); `cargo tauri build` produces `.deb`/`.AppImage`. *(First external contributions — thanks [@FelixDombek-TomTom](https://github.com/FelixDombek-TomTom)!)*
-> - 🔌 **Import, upgraded** — adopt a session into a chosen **space**, **paste a session ID** to grab one that isn't in the recent list, and open it in the **embedded** terminal or an external one.
+> - 🔀 **Pull requests carry their state** — open, merged, closed or draft, on the card and spelled out with each PR's title in the detail panel. Pulled from `gh` when you press **Sync**; nothing runs in the background.
+> - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Written into the notes by the session skills, so the app holds no tracker credentials.
+> - ✅ **Close finishes a stale session properly** — it resumes the session headless, writes the summary, attaches the PRs, and moves it to Closed. No terminal opens.
+> - 📂 **A session opens at the root of its space** — the folder you chose in Settings. Move a space, its sessions follow.
+> - 🧠 **Knowledge notes fill as you work** — `/learn` writes a note the moment something durable comes up, extending the note that already owns the subject instead of duplicating it.
+> - 📥 **Adopt any session you started outside the app** — the *Recent · unmanaged* list pages through all of them.
+>
+> Earlier releases: the [changelog](CHANGELOG.md) has the full history.
 
 ## The problem
 
