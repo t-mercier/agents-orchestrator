@@ -407,14 +407,12 @@ fn start_session(
             format!("cd {} && git checkout {} -- && {}", cd, pty::shell_quote(branch), claude)
         }
     } else {
-        // The category's own folder, not the space root — starting in the root hands the
-        // whole of it to the session, and for a space rooted at `~` that is the entire
-        // home directory (a macOS file-access prompt per protected folder). Falls back to
-        // the root when the category folder does not exist yet, so a launch never breaks.
-        let root = category_root_dir(&cfg, cat_def);
-        let in_category = format!("{root}/{category}");
-        let launch_dir =
-            if std::path::Path::new(&in_category).is_dir() { in_category } else { root };
+        // The space root, deliberately: a session usually needs the repos that sit beside
+        // its notes folder, not the notes folder alone. Root a space at a dedicated
+        // directory rather than at `~` — pointing one at the home is what makes macOS ask
+        // for file access folder by folder, and no launch-time narrowing fixes that
+        // honestly.
+        let launch_dir = category_root_dir(&cfg, cat_def);
         format!("cd {} && {}", pty::shell_quote(&launch_dir), claude)
     };
     if embedded {

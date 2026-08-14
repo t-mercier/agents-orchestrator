@@ -10,6 +10,23 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.8.3-alpha] - 2026-08-14
+
+### Changed
+- **A session opens on its space root again, for every space** — 0.8.1 and 0.8.2 narrowed
+  the working directory to the session's own folder whenever the recorded one was the home
+  *or a configured root*. Those two are not the same case. A space rooted at `~` exposes
+  the home, which is what made macOS ask for file access folder by folder; a space rooted
+  at an ordinary directory exposes exactly what the session needs, because the repos sit
+  beside the notes folder. Narrowing there bought nothing and cost the code: a session
+  resumed into `~/work/BUG/TICKET-1` could no longer read the repo two levels up without
+  asking.
+
+  So the narrowing is gone from both launch paths, and the cure for the original problem
+  is stated where it belongs: **do not root a space at your home.** Give it a dedicated
+  directory and move your category folders under it. Nothing at launch time can fix a root
+  that broad without breaking the case where the root is the right answer.
+
 ## [0.8.2-alpha] - 2026-08-14
 
 ### Fixed

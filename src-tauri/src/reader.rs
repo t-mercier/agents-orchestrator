@@ -504,30 +504,6 @@ fn extract_section(content: &str, heading: &str) -> Option<String> {
     }
 }
 
-/// The directory a session should be relaunched in.
-///
-/// `launch_cwd` is where `claude` happened to be started the first time, and for a session
-/// opened from the dashboard that was the SPACE ROOT — often the home directory itself.
-/// Resuming there hands the whole home to the new process, which on macOS means a
-/// file-access prompt per protected folder, every single time.
-///
-/// So: when the recorded directory is that broad — the home, or a configured root — and the
-/// session has a notes.md, relaunch in the session's own folder instead. Any narrower
-/// directory is kept untouched: a session that was working in a repo carries that repo
-/// here, and that is exactly the information worth keeping.
-pub(crate) fn resume_dir(launch_cwd: &str, notes_path: Option<&str>) -> String {
-    let session_dir = notes_path
-        .and_then(|p| p.strip_suffix("/notes.md"))
-        .filter(|d| !d.is_empty());
-    let Some(dir) = session_dir else { return launch_cwd.to_string() };
-    // Compare canonicalised, so `~`, a trailing slash and a symlinked home all match.
-    let Ok(here) = std::path::Path::new(launch_cwd).canonicalize() else {
-        return launch_cwd.to_string();
-    };
-    let broad = crate::config::home().canonicalize().is_ok_and(|h| h == here)
-        || crate::configured_roots().contains(&here);
-    if broad { dir.to_string() } else { launch_cwd.to_string() }
-}
 
 /// What a running session's notes.md contributes to its card. The link fields are
 /// LISTS (a task can span several PRs / tickets — see frontmatter_values); pr_links
@@ -759,7 +735,7 @@ pub fn get_sessions() -> Vec<Value> {
             "name": entry_meta.get("name").and_then(Value::as_str).filter(|s| !s.is_empty())
                 .or_else(|| data.get("name").and_then(Value::as_str))
                 .unwrap_or(""),
-            "cwd": resume_dir(launch_cwd, notes_path.as_deref()),
+            "cwd": launch_cwd,
             "pid": pid,
             "status": status,
             // "cli" (Claude Code terminal) or "claude-desktop" (the Claude Desktop app) —
@@ -1367,14 +1343,7 @@ fn scan_historical() -> Vec<Value> {
             // renderer takes the MORE RECENT of updatedAt vs lastActivityAt for the age
             // pill, so a same-day Pause doesn't display a days-old "last activity").
             let last_activity_at = tr.as_ref().and_then(|t| t.last_activity_at.clone());
-            // Same narrowing as the running path (resume_dir): a session recorded at the
-            // home or a space root would otherwise be relaunched there, which is what made
-            // macOS ask for file access on every single resume. Closed and Archived
-            // sessions get resumed too — they were missed the first time round.
-            let cwd = resume_dir(
-                &tr.and_then(|t| t.launch_cwd).unwrap_or(root_dir),
-                Some(notes_path.as_str()),
-            );
+            let cwd = tr.and_then(|t| t.launch_cwd).unwrap_or(root_dir);
 
             let last_summary = last_history_summary(&content);
 
@@ -1441,52 +1410,10 @@ fn bucket_by_status(all: Vec<Value>) -> Value {
 
 #[cfg(test)]
 mod tests {
-    /// Resuming used to `cd` wherever `claude` first started — the space root, which for a
-    /// space rooted at `~` is the whole home. That is what made macOS ask for file access
-    /// on every resume.
-    #[test]
-    fn resume_dir_replaces_a_root_sized_cwd_with_the_session_folder() {
-        let home = crate::config::home();
-        let home_s = home.to_string_lossy().to_string();
-        let notes = format!("{home_s}/PERSO/my-session/notes.md");
-        assert_eq!(resume_dir(&home_s, Some(&notes)), format!("{home_s}/PERSO/my-session"));
-    }
-
-    /// The running path got resume_dir first; Closed and Archived kept the root, so a
-    /// resume from those tabs still opened on the whole home.
-    #[test]
-    fn resume_dir_applies_to_a_historical_session_too() {
-        let home = crate::config::home().to_string_lossy().to_string();
-        let notes = format!("{home}/timothee/PERSO/s/notes.md");
-        assert_eq!(resume_dir(&home, Some(&notes)), format!("{home}/timothee/PERSO/s"));
-    }
-
-    #[test]
-    fn resume_dir_keeps_a_directory_that_says_something() {
-        // A repo is the useful answer — never trade it for the notes folder.
-        let notes = "/somewhere/PERSO/my-session/notes.md";
-        assert_eq!(resume_dir("/repos/storefront", Some(notes)), "/repos/storefront");
-    }
-
-    #[test]
-    fn resume_dir_leaves_an_unmanaged_session_alone() {
-        // No notes.md → nothing better to offer than what was recorded.
-        let home = crate::config::home().to_string_lossy().to_string();
-        assert_eq!(resume_dir(&home, None), home);
-    }
-
-    #[test]
-    fn resume_dir_survives_a_path_that_no_longer_exists() {
-        assert_eq!(
-            resume_dir("/gone/for/good", Some("/gone/for/good/notes.md")),
-            "/gone/for/good"
-        );
-    }
-
     use super::{
         bucket_by_status, date_to_days, discover_meta_lines, extract_pr_urls, frontmatter_values,
         lead_date, is_resumable_sid, merge_links, notes_records_session, parse_frontmatter,
-        pick_pr_url, reopened_after_close, resolve_pr_links, resume_dir, root_for_notes_path,
+        pick_pr_url, reopened_after_close, resolve_pr_links, root_for_notes_path,
         session_history_info, Transcript, UnmanagedRow,
     };
     use crate::is_valid_session_id;
