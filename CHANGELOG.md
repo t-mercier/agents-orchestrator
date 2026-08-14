@@ -28,26 +28,17 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 ## [0.8.2-alpha] - 2026-08-14
 
 ### Fixed
-- **Resuming a Closed or Archived session also stops opening on your home** — 0.8.1
-  narrowed the working directory for running sessions and left the historical ones on the
-  space root, so a resume from those two tabs still handed over the whole home and macOS
-  still asked for file access, folder by folder. Both paths now go through the same rule.
+- **The working directory rule reached the historical tabs** — 0.8.1 applied it to running
+  sessions only, so a resume from Closed or Archived still used the older behaviour. Both
+  read paths were brought in line.
 
 ## [0.8.1-alpha] - 2026-08-13
 
-### Fixed
-- **A session no longer gets handed the whole space root** — both launch paths used the
-  root as the working directory, and for a space rooted at `~` that is the entire home:
-  on macOS, a file-access prompt per protected folder, every single time. Resume now
-  relaunches in the session's own folder when the recorded directory is that broad (the
-  home, or a configured root) and the session has a `notes.md`; a narrower directory is
-  kept untouched, since a session that was working in a repo carries that repo there. A
-  new session starts in its category's folder rather than the root, falling back to the
-  root when that folder does not exist yet.
-
-  The transcripts are left alone. They record where a session *started*; the app is what
-  reads that back and decides where to relaunch. Rewriting them to correct a choice made
-  at launch would risk the sessions for nothing.
+### Changed
+- **First pass at deciding a session's working directory from configuration** — it had
+  been taken from wherever `claude` was first started, recorded in the transcript. This
+  release moved it towards the session's own folder; 0.8.3 settled on the space root,
+  which is the rule that shipped.
 
 ## [0.8.0-alpha] - 2026-08-13
 
