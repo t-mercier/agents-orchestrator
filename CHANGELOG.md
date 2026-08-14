@@ -13,19 +13,17 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 ## [0.8.3-alpha] - 2026-08-14
 
 ### Changed
-- **A session opens on its space root again, for every space** — 0.8.1 and 0.8.2 narrowed
-  the working directory to the session's own folder whenever the recorded one was the home
-  *or a configured root*. Those two are not the same case. A space rooted at `~` exposes
-  the home, which is what made macOS ask for file access folder by folder; a space rooted
-  at an ordinary directory exposes exactly what the session needs, because the repos sit
-  beside the notes folder. Narrowing there bought nothing and cost the code: a session
-  resumed into `~/work/BUG/TICKET-1` could no longer read the repo two levels up without
-  asking.
+- **A session opens at the root of its space — one rule, every session** — the working
+  directory used to come from wherever `claude` happened to be started the first time,
+  which made it a property of history rather than of configuration: move a space in
+  Settings and its older sessions kept opening at the old place, with nothing in the UI
+  able to correct it. It is now resolved from the space the session belongs to, on both
+  launch paths and from every tab. A session outside every configured space — an unmanaged
+  one — keeps the directory it recorded, since that is the only thing known about it.
 
-  So the narrowing is gone from both launch paths, and the cure for the original problem
-  is stated where it belongs: **do not root a space at your home.** Give it a dedicated
-  directory and move your category folders under it. Nothing at launch time can fix a root
-  that broad without breaking the case where the root is the right answer.
+  This also replaces the launch-time narrowing shipped in 0.8.1 and 0.8.2, which moved a
+  session into its own notes folder. That cut sessions off from the repositories sitting
+  beside their notes, which is usually the reason the space root is the useful answer.
 
 ## [0.8.2-alpha] - 2026-08-14
 

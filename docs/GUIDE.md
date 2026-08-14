@@ -36,6 +36,8 @@ The one thing worth getting straight:
 
 > Rule of thumb: **Resume** = same conversation · **Restart** = same project, fresh conversation, history still linked · **Start** = new project.
 
+> Whichever you use, the terminal opens at the **root of the session's space** — the folder you picked for that space in Settings. One rule for every session, so moving a space moves its sessions with it.
+
 Each can open **in the app's embedded terminal** or **in your own terminal**, with the toggle next to the button.
 
 **Prefer the embedded one.** The whole point of the app is to stop juggling a dozen

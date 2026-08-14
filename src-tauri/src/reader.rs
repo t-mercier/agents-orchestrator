@@ -610,6 +610,28 @@ fn root_for_notes_path(cfg: &Value, notes_path: &str) -> Value {
     best.map(|(_, r)| r).unwrap_or(Value::Null)
 }
 
+/// Where a session's terminal opens: the root of the space the session belongs to.
+///
+/// One rule, no exceptions worth the name — a session's working directory is decided by
+/// its space, not by wherever `claude` happened to be started the first time. That earlier
+/// behaviour made the directory a property of history rather than of configuration: move a
+/// space in Settings and old sessions kept opening at the old place, which is impossible to
+/// explain and impossible to fix from the UI.
+///
+/// `None` when the session belongs to no configured space — an unmanaged session, or one
+/// whose notes sit outside every root. The caller then keeps the recorded directory, which
+/// is the only thing known about it.
+fn space_root_for_notes(cfg: &Value, notes_path: &str) -> Option<String> {
+    let root_name = root_for_notes_path(cfg, notes_path);
+    let root_name = root_name.as_str()?;
+    cfg.get("roots")?
+        .as_array()?
+        .iter()
+        .find(|r| r.get("name").and_then(Value::as_str) == Some(root_name))
+        .and_then(|r| r.get("path").and_then(Value::as_str))
+        .map(String::from)
+}
+
 /// PR links for a session: the explicit frontmatter list wins (a task can span several
 /// PRs); with none, a REVIEW session falls back to the PR URL pasted into the
 /// transcript, disambiguated by the number in the session name. That fallback stays
@@ -735,7 +757,11 @@ pub fn get_sessions() -> Vec<Value> {
             "name": entry_meta.get("name").and_then(Value::as_str).filter(|s| !s.is_empty())
                 .or_else(|| data.get("name").and_then(Value::as_str))
                 .unwrap_or(""),
-            "cwd": launch_cwd,
+            // The space root, always — see space_root_for_notes. Falls back to the
+            // recorded directory for a session that belongs to no space.
+            "cwd": notes_path.as_deref()
+                .and_then(|p| space_root_for_notes(&cfg, p))
+                .unwrap_or_else(|| launch_cwd.to_string()),
             "pid": pid,
             "status": status,
             // "cli" (Claude Code terminal) or "claude-desktop" (the Claude Desktop app) —
@@ -1343,7 +1369,8 @@ fn scan_historical() -> Vec<Value> {
             // renderer takes the MORE RECENT of updatedAt vs lastActivityAt for the age
             // pill, so a same-day Pause doesn't display a days-old "last activity").
             let last_activity_at = tr.as_ref().and_then(|t| t.last_activity_at.clone());
-            let cwd = tr.and_then(|t| t.launch_cwd).unwrap_or(root_dir);
+            let cwd = space_root_for_notes(&cfg, &notes_path)
+                .unwrap_or_else(|| tr.and_then(|t| t.launch_cwd).unwrap_or(root_dir));
 
             let last_summary = last_history_summary(&content);
 
@@ -1414,6 +1441,7 @@ mod tests {
         bucket_by_status, date_to_days, discover_meta_lines, extract_pr_urls, frontmatter_values,
         lead_date, is_resumable_sid, merge_links, notes_records_session, parse_frontmatter,
         pick_pr_url, reopened_after_close, resolve_pr_links, root_for_notes_path,
+        space_root_for_notes,
         session_history_info, Transcript, UnmanagedRow,
     };
     use crate::is_valid_session_id;
@@ -1568,6 +1596,44 @@ mod tests {
         // …an unrelated id is not, and an empty id never matches.
         assert!(!notes_records_session(content, "deadbeef-0000-0000-0000-000000000000"));
         assert!(!notes_records_session(content, ""));
+    }
+
+    #[test]
+    /// The rule: a session opens at the root of ITS space. Not where claude was first
+    /// started — that made the directory a property of history, so moving a space in
+    /// Settings left old sessions opening at the old place.
+    #[test]
+    fn space_root_is_resolved_from_the_session_notes() {
+        let cfg = json!({
+            "roots": [{"name": "Work", "path": "/w"}, {"name": "Perso", "path": "/p"}],
+            "scanDirs": [
+                {"category": "BUG", "base": "/w/BUG", "root": "Work"},
+                {"category": "PERSO", "base": "/p/PERSO", "root": "Perso"},
+            ],
+        });
+        assert_eq!(space_root_for_notes(&cfg, "/w/BUG/T-1/notes.md"), Some("/w".into()));
+        assert_eq!(space_root_for_notes(&cfg, "/p/PERSO/thing/notes.md"), Some("/p".into()));
+    }
+
+    #[test]
+    fn space_root_is_none_outside_every_space() {
+        // An unmanaged session, or notes parked outside the configured roots: nothing to
+        // resolve, so the caller keeps what it recorded.
+        let cfg = json!({
+            "roots": [{"name": "Work", "path": "/w"}],
+            "scanDirs": [{"category": "BUG", "base": "/w/BUG", "root": "Work"}],
+        });
+        assert_eq!(space_root_for_notes(&cfg, "/elsewhere/x/notes.md"), None);
+    }
+
+    #[test]
+    fn space_root_survives_a_root_that_lost_its_definition() {
+        // scanDirs names a root that `roots` no longer lists (a hand-edited config).
+        let cfg = json!({
+            "roots": [{"name": "Work", "path": "/w"}],
+            "scanDirs": [{"category": "OLD", "base": "/gone/OLD", "root": "Ghost"}],
+        });
+        assert_eq!(space_root_for_notes(&cfg, "/gone/OLD/x/notes.md"), None);
     }
 
     #[test]
