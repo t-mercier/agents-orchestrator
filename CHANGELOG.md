@@ -10,6 +10,29 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.9.0-alpha] - 2026-08-20
+
+### Added
+- **Sync realigns a session's tickets and PRs, instead of only refreshing PR states** — it
+  discovered nothing: a pull request opened after the last checkpoint stayed invisible
+  however often you pressed the button, and ticket statuses were never touched, so a board
+  showing `Triaged` for something long since `Done` had no way back. The name promised more
+  than the button did.
+
+  It now runs two passes. First the new **`/sync-refs`** headless: the agent reads each
+  ticket's current status through the tracker MCP, asks `gh` for the pull requests whose
+  branch names one of the session's tickets, and rewrites the frontmatter. Then the
+  existing `gh` pass for each PR's state and title.
+
+  The app gains no credentials from this. Reading a tracker needs an account, and an agent
+  already has one through MCP — which is also why the pass costs a few tokens and some
+  seconds rather than being instant. There is no `--resume`: this needs the session's
+  frontmatter, not its conversation.
+
+  Statuses are **replaced** — a status is a snapshot, and a stale one presented as current
+  is the entire problem being fixed. PR links are only ever **added**: a link attached by
+  hand is a deliberate act, and pruning belongs to the editor.
+
 ## [0.8.3-alpha] - 2026-08-14
 
 ### Changed

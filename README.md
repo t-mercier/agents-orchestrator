@@ -8,7 +8,7 @@
 
 [![Live site](https://img.shields.io/badge/%F0%9F%8C%90%20Live%20site-visit-9b8cff?style=for-the-badge)](https://t-mercier.github.io/ai-agents-orchestrator/)
 
-[![Version](https://img.shields.io/badge/version-0.8.3--alpha-9b8cff)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.9.0--alpha-9b8cff)](CHANGELOG.md)
 [![CI](https://img.shields.io/github/actions/workflow/status/t-mercier/ai-agents-orchestrator/ci.yml?branch=master)](https://github.com/t-mercier/ai-agents-orchestrator/actions)
 [![License: Source Available](https://img.shields.io/badge/license-Source%20Available-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-13+-000000?style=flat&logo=apple)](https://www.apple.com/macos/)
@@ -58,8 +58,9 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > [!NOTE]
 > ## What's new
 >
-> - 🔀 **Pull requests carry their state** — open, merged, closed or draft, on the card and spelled out with each PR's title in the detail panel. Pulled from `gh` when you press **Sync**; nothing runs in the background.
-> - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Written into the notes by the session skills, so the app holds no tracker credentials.
+> - ⟳ **Sync realigns a session with reality** — one button: ticket statuses read from your tracker, and any pull request opened since the last checkpoint attached. Nothing runs in the background.
+> - 🔀 **Pull requests carry their state** — open, merged, closed or draft, on the card and spelled out with each PR's title in the detail panel.
+> - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Read through MCP, so the app itself never holds a tracker credential.
 > - ✅ **Close finishes a stale session properly** — it resumes the session headless, writes the summary, attaches the PRs, and moves it to Closed. No terminal opens.
 > - 📂 **A session opens at the root of its space** — the folder you chose in Settings. Move a space, its sessions follow.
 > - 🧠 **Knowledge notes fill as you work** — `/learn` writes a note the moment something durable comes up, extending the note that already owns the subject instead of duplicating it.
@@ -171,6 +172,7 @@ The launcher buttons (**＋ New**, **Resume**, **Restart**, **Archive**) drive a
 | `/start-session <CAT> <ticket> <name>` | Create a session workspace + `notes.md` under the category's folder, register it, sync the repo |
 | `/close-session` | Wrap up the session: summarise into `notes.md` + append a history entry tagged with the session id |
 | `/save-session` | Checkpoint mid-flight (same summary as close, marked `(in progress)`) **without** closing it — handy before a context compaction |
+| `/sync-refs <notes>` | Realign one session's references: each ticket's current status from the tracker (via MCP) and any pull request whose branch names one of its tickets. Run by the dashboard's **Sync** |
 | `/wrap-session <notes> <id>` | The headless twin of `/close-session`, run by the dashboard's **Close** button: steps 1–6 only, no distil and no questions — `--print` has no one to answer them |
 | `/restart-session <slug>` | Reload a session's notes **and its recorded session id** into a fresh session (history stays linked) |
 | `/archive-session <slug>` | Mark a session archived (drops it from the active list) |
