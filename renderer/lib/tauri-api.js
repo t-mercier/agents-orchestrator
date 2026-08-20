@@ -138,6 +138,16 @@
         .then((status) => ({ ok: true, status: status || {} }))
         .catch((e) => ({ ok: false, error: String(e) })),
 
+    // Realign a session's tickets and PRs by running /sync-refs headless. Slow (an
+    // agent pass over a tracker and some repos) and the only reason Sync takes seconds
+    // rather than an instant.
+    // Returns { summary, prs } — the PR list read back from the file the agent rewrote,
+    // so the caller never has to guess when its own reload has landed.
+    syncRefs: (notesPath, cwd) =>
+      invoke('sync_refs', { notesPath: notesPath || '', cwd: cwd || '' })
+        .then((r) => ({ ok: true, summary: String((r && r.summary) || ''), prs: (r && r.prs) || [] }))
+        .catch((e) => ({ ok: false, error: String(e) })),
+
     // ── Session skills installer (src-tauri/src/skills.rs) ──
     // status: which bundled skills are already in ~/.claude/skills (drives the banner).
     skillsStatus: () => invoke('skills_status').catch(() => ({ installed: true, present: [], missing: [], differs: [] })),

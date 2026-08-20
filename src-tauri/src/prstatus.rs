@@ -58,6 +58,10 @@ pub fn state_of(gh: &Value) -> &'static str {
 /// and `gh` is typically installed by a version manager (mise, asdf, homebrew) that only
 /// a sourced profile puts on the path.
 fn run(inner: &str) -> Result<String, String> {
+    run_within(inner, CALL_TIMEOUT)
+}
+
+fn run_within(inner: &str, limit: Duration) -> Result<String, String> {
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
     let mut child = std::process::Command::new(&shell)
         .args(["-ilc", inner])
@@ -77,7 +81,7 @@ fn run(inner: &str) -> Result<String, String> {
                     Err(format!("command failed: {inner}"))
                 };
             }
-            Ok(None) if start.elapsed() < CALL_TIMEOUT => std::thread::sleep(Duration::from_millis(100)),
+            Ok(None) if start.elapsed() < limit => std::thread::sleep(Duration::from_millis(100)),
             _ => {
                 let _ = child.kill();
                 let _ = child.wait();
@@ -211,4 +215,44 @@ mod tests {
     fn draft_wins_over_state() {
         assert_eq!(state_of(&json!({"state": "CLOSED", "isDraft": true})), "draft");
     }
+}
+
+/// An agent pass may read a tracker over the network and list several repositories; it is
+/// slow by nature. The ceiling only exists so a hung run cannot leave Sync spinning.
+const AGENT_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Realign a session's tickets and PRs with reality, by asking an agent.
+///
+/// The app cannot do this itself and should not try: reading ticket statuses needs tracker
+/// credentials it deliberately does not hold, and knowing which pull requests belong to a
+/// session needs judgement about branch names. An agent has both, through MCP and `gh`, so
+/// Sync runs `/sync-refs` headless and then re-reads the file.
+///
+/// No `--resume`: this needs the session's *frontmatter*, not its conversation, so loading
+/// a transcript would cost a great deal to learn nothing.
+#[tauri::command(async)]
+pub fn sync_refs(notes_path: String, cwd: String) -> Result<Value, String> {
+    let abs = crate::notes_md_under_root(&notes_path)?;
+    let dir = if std::path::Path::new(&cwd).is_dir() {
+        cwd
+    } else {
+        crate::config::home().to_string_lossy().to_string()
+    };
+    let inner = format!(
+        "cd {} && claude --model {} --permission-mode acceptEdits -p {}",
+        crate::pty::shell_quote(&dir),
+        crate::pty::shell_quote(crate::pty::CLAUDE_MODEL),
+        crate::pty::shell_quote(&format!("/sync-refs {}", abs.display())),
+    );
+    let out = run_within(&inner, AGENT_TIMEOUT)?;
+    // Read the PR list back from the file the agent just rewrote, rather than making the
+    // renderer wait a guessed number of milliseconds for its own reload to land. The
+    // caller needs the complete list to ask gh for each state.
+    let prs = std::fs::read_to_string(&abs)
+        .map(|c| crate::reader::frontmatter_values(&c, "pr_link", "pr_links"))
+        .unwrap_or_default();
+    // The skill's confirmation is one line by contract; keep the last one in case the
+    // shell printed anything ahead of it.
+    let summary = out.lines().last().unwrap_or("Synced.").trim().to_string();
+    Ok(json!({ "summary": summary, "prs": prs }))
 }

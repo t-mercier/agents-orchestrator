@@ -153,10 +153,13 @@ function prStateRows(s) {
 // only thing in this app that touches the network. Only rendered when there is something
 // to ask about.
 function syncBtn(s) {
+  // Shown as soon as there is a ticket OR a PR: with a ticket alone there is still a
+  // status to refresh, and a PR opened since the last checkpoint is exactly what Sync is
+  // now able to discover.
   const prs = prLinksOf(s)
-  if (!prs.length) return ''
-  return `<button class="act" data-sync-prs="${escapeHtml(prs.join(' '))}" aria-label="Sync pull-request state"
-           data-tip="Ask GitHub for the current PR state — the only network call this app makes">${svgIcon('<path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.36-2.64L3 16"/><path d="M3 21v-5h5"/>')}</button>`
+  if (!prs.length && !ticketsOf(s).length) return ''
+  return `<button class="act" data-sync-prs="${escapeHtml(prs.join(' '))}" data-sync-notes="${escapeHtml(s.notesPath || '')}" data-sync-cwd="${escapeHtml(s.cwd || '')}" aria-label="Sync tickets and pull requests"
+           data-tip="Refresh ticket statuses and pull requests — the only network calls this app makes">${svgIcon('<path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.36-2.64L3 16"/><path d="M3 21v-5h5"/>')}</button>`
 }
 
 function buildMetaRows(s, isHistorical) {
@@ -1501,22 +1504,44 @@ function installDelegatedHandlers() {
     const sync = e.target.closest('[data-sync-prs]')
     if (sync) {
       e.stopPropagation()
-      const urls = (sync.dataset.syncPrs || '').split(' ').filter(Boolean)
-      if (!urls.length || !window.api.syncPrStatus) return
+      const notes = sync.dataset.syncNotes || ''
+      const cwd = sync.dataset.syncCwd || ''
       sync.disabled = true
       sync.classList.add('busy')
-      window.api.syncPrStatus(urls).then(res => {
-        sync.disabled = false
-        sync.classList.remove('busy')
-        if (res && res.ok) {
-          window._prStatus = res.status
-          if (window.refreshSessions) window.refreshSessions()
-        } else if (window.confirmAction) {
-          // A missing or logged-out gh is one thing to fix, so it is said once and
-          // plainly rather than turning every PR into a silent "unknown".
+      const fail = (res) => {
+        if (window.confirmAction) {
+          // A missing tool or a logged-out CLI is one thing to fix, so it is said once
+          // and plainly rather than turning every reference into a silent "unknown".
           window.confirmAction({ title: 'Could not sync', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
         }
-      })
+      }
+      const done = () => {
+        sync.disabled = false
+        sync.classList.remove('busy')
+        if (window.refreshSessions) window.refreshSessions()
+      }
+      // Two passes, in order. First the agent realigns the frontmatter — ticket statuses
+      // from the tracker, plus any PR opened since the last checkpoint. Only then is the
+      // PR list complete enough to be worth asking gh for each state.
+      const refreshStates = (urls) => {
+        if (!urls.length || !window.api.syncPrStatus) { done(); return }
+        window.api.syncPrStatus(urls).then(res => {
+          if (res && res.ok) window._prStatus = res.status
+          else fail(res)
+          done()
+        })
+      }
+      const known = (sync.dataset.syncPrs || '').split(' ').filter(Boolean)
+      if (notes && window.api.syncRefs) {
+        window.api.syncRefs(notes, cwd).then(res => {
+          if (!res || !res.ok) { fail(res); done(); return }
+          // The list comes back from the file the agent just rewrote, so a PR it discovered
+          // gets its state in this same click.
+          refreshStates(res.prs.length ? res.prs : known)
+        })
+      } else {
+        refreshStates(known)
+      }
       return
     }
 

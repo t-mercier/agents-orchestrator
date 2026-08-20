@@ -1415,6 +1415,7 @@ pub fn run() {
             wrap_session,
             prstatus::get_pr_status,
             prstatus::sync_pr_status,
+            prstatus::sync_refs,
             can_reveal_terminal,
             reveal_terminal,
             get_usage,
