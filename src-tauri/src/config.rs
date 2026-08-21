@@ -423,6 +423,7 @@ pub fn default_config() -> Value {
             { "name": "PERSO",  "color": "#8fd9ff", "root": "Perso" }
         ],
         "knowledge": { "enabled": false },
+        "skillProposals": true,
         "ticketBaseUrl": ""
     })
 }
