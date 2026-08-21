@@ -201,10 +201,20 @@ def vaults(cfg):
     return out
 
 
+# Keys that default ON when absent. A config written before the key existed must not
+# silently disable behaviour the product ships as its default — that reads as a dead
+# feature rather than an opt-out, and it is invisible from the outside.
+DEFAULT_ON_FLAGS = ('skillProposals',)
+
+
 def flag(cfg, key):
-    """A boolean opt-in from the config root. Prints 'on'/'' so a shell `[ -n ... ]`
-    test reads naturally. Unknown keys are off — an optional step stays off by default."""
-    return 'on' if cfg.get(key) is True else ''
+    """A boolean flag from the config root. Prints 'on'/'' so a shell `[ -n ... ]` test
+    reads naturally. An absent key is off, except for DEFAULT_ON_FLAGS; an explicit
+    `false` always wins, so opting out stays possible."""
+    value = cfg.get(key)
+    if value is None:
+        return 'on' if key in DEFAULT_ON_FLAGS else ''
+    return 'on' if value is True else ''
 
 
 def find_notes(cfg, slug):
