@@ -10,6 +10,17 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **Resume stops shadowing itself when the frontmatter session_id is dead** — the
+  effective resumable id fell back to the newest registered id only when the
+  frontmatter's own `session_id` had the WRONG SHAPE (a `/start-session` stub
+  placeholder). A well-formed but dead id — its transcript deleted, or the frontmatter
+  hand-edited or copied from another session — satisfied that check and the fallback
+  never ran, so a ticket with several real, later conversations recorded against it
+  could offer Restart and never Resume, permanently. The choice now checks whether the
+  frontmatter id's conversation actually exists on disk, not just whether it looks like
+  one.
+
 ## [0.9.0-alpha] - 2026-08-20
 
 ### Added

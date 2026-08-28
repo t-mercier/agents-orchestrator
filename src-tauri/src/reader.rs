@@ -836,6 +836,33 @@ fn is_resumable_sid(s: &str) -> bool {
     s.len() >= 32 && s.contains('-') && s.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-')
 }
 
+/// Which id Resume should use for a workspace: the frontmatter `session_id` when its
+/// conversation is still on disk, else the newest id registered to that notes.md whose
+/// conversation is.
+///
+/// Both halves matter. A `/start-session` stub leaves `session_id` as a "to fill (…)"
+/// placeholder — that is the case `is_resumable_sid` was written for. But an id can also
+/// be well-formed and DEAD: its transcript deleted, or the frontmatter hand-edited or
+/// copied from another session. Gating the fallback on shape alone let such an id shadow
+/// the registered ids that DO have a transcript, so the dashboard offered Restart and
+/// never Resume for that workspace again.
+///
+/// When nothing resumable exists at all, the frontmatter id is kept (it still identifies
+/// the session in the UI); only `resumable` goes false. `newest_registered` is a closure
+/// so the active-sessions scan is skipped on the common path where the frontmatter id is
+/// live. `has_transcript` is injected to keep the choice unit-testable.
+fn pick_resumable_sid<F, G>(fm_sid: Option<&str>, has_transcript: F, newest_registered: G) -> Option<String>
+where
+    F: Fn(&str) -> bool,
+    G: FnOnce() -> Option<String>,
+{
+    match fm_sid.filter(|s| is_resumable_sid(s)) {
+        Some(s) if has_transcript(s) => Some(s.to_string()),
+        Some(s) => newest_registered().or_else(|| Some(s.to_string())),
+        None => newest_registered(),
+    }
+}
+
 /// When a notes.md carries no real frontmatter session_id (a stub/placeholder), find the
 /// most-recently-active session id registered to it in `active` (the parsed
 /// active-sessions.json — the caller loads it ONCE per scan, not once per notes.md)
@@ -1289,17 +1316,20 @@ fn scan_historical() -> Vec<Value> {
             let (mut hist_status, hist_date) = session_history_info(&content);
             let fm = parse_frontmatter(&content);
             let notes_path = notes.to_string_lossy().into_owned();
-            // Effective resumable id: the frontmatter session_id if it's a real UUID, else
-            // the latest id registered to this notes.md in active-sessions.json. A
-            // /start-session stub leaves session_id as a "to fill (…)" placeholder, so
-            // without this Resume is never offered (only Restart) even when a live
-            // transcript exists.
-            let eff_sid = fm
-                .get("session_id")
-                .filter(|s| is_resumable_sid(s))
-                .cloned()
-                .or_else(|| latest_resumable_sid(&notes_path, &active_registry));
-            let tr = eff_sid.as_ref().map(|sid| read_transcript(sid));
+            // Effective resumable id: the frontmatter session_id when its conversation is
+            // still on disk, else the latest id registered to this notes.md in
+            // active-sessions.json. Both halves matter — a /start-session stub leaves
+            // session_id as a "to fill (…)" placeholder, and an id can also be well-formed
+            // but DEAD (its transcript deleted, or a hand-edited/copied frontmatter).
+            // Gating the fallback on shape alone let a dead-but-well-formed id shadow the
+            // registered ids that do have a transcript, so Resume was never offered for
+            // that workspace again — only Restart, permanently.
+            let eff_sid = pick_resumable_sid(
+                fm.get("session_id").map(String::as_str),
+                |s| read_transcript(s).found,
+                || latest_resumable_sid(&notes_path, &active_registry),
+            );
+            let tr = eff_sid.as_deref().map(read_transcript);
             // A "closed" session whose transcript was touched on a LATER day than its
             // last /close-session was reopened (resumed) + worked on without re-closing →
             // surface it as stale (open work) rather than closed. (Resume/restart-session don't
@@ -1440,7 +1470,7 @@ mod tests {
     use super::{
         bucket_by_status, date_to_days, discover_meta_lines, extract_pr_urls, frontmatter_values,
         lead_date, is_resumable_sid, merge_links, notes_records_session, parse_frontmatter,
-        pick_pr_url, reopened_after_close, resolve_pr_links, root_for_notes_path,
+        pick_pr_url, pick_resumable_sid, reopened_after_close, resolve_pr_links, root_for_notes_path,
         space_root_for_notes,
         session_history_info, Transcript, UnmanagedRow,
     };
@@ -1527,6 +1557,42 @@ mod tests {
         assert!(!is_resumable_sid("to fill (open the parallel session, then /restart-session X)"));
         assert!(!is_resumable_sid(""));
         assert!(!is_resumable_sid("short"));
+    }
+
+    #[test]
+    fn pick_resumable_sid_falls_back_when_the_frontmatter_transcript_is_gone() {
+        let live = "5b5c37b2-1c78-4486-beaf-261648f212b8";
+        let dead = "20d009c0-225e-45f8-8b69-903843fa755c";
+        let alive = |s: &str| s == live;
+
+        // Regression: a well-formed frontmatter id whose transcript was deleted must not
+        // shadow a registered id that still has one — that left the workspace offering
+        // Restart and never Resume, permanently.
+        assert_eq!(
+            pick_resumable_sid(Some(dead), alive, || Some(live.to_string())),
+            Some(live.to_string())
+        );
+
+        // A live frontmatter id wins, and the registered scan is never run.
+        assert_eq!(
+            pick_resumable_sid(Some(live), alive, || panic!("must not scan when fm id is live")),
+            Some(live.to_string())
+        );
+
+        // The /start-session placeholder case the fallback was originally written for.
+        assert_eq!(
+            pick_resumable_sid(Some("to fill (open the parallel session)"), alive, || Some(
+                live.to_string()
+            )),
+            Some(live.to_string())
+        );
+
+        // Nothing resumable anywhere: keep the frontmatter id so the UI can still name the
+        // session, even though `resumable` will end up false for it.
+        assert_eq!(pick_resumable_sid(Some(dead), alive, || None), Some(dead.to_string()));
+
+        // No frontmatter id at all (a stub with the key omitted) and nothing registered.
+        assert_eq!(pick_resumable_sid(None, alive, || None), None);
     }
 
     #[test]
