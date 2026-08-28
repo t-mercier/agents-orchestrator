@@ -631,16 +631,20 @@ window.onTerminalOpened = (key) => {
   // _terminalSession seeded at submit stays put until the poll discovers the real one.
   const s = sessions.find(x => x.sessionId === key || sessionKey(x) === key)
   if (s) window._terminalSession = s
+  // Select the session regardless of which tab we're already on — this used to happen
+  // only in the tab-switch branch below, so opening a terminal FROM the Running tab (the
+  // common case: click Resume while already there) never highlighted anything. You'd end
+  // up inside a session with no card marked as the one you're in.
+  if (s) { selectedKey = sessionKey(s); window._lastSelectedKey = selectedKey }
   if (activeTab !== 'running') {
     activeTab = 'running'
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === 'running')
     })
-    if (s) { selectedKey = sessionKey(s); window._lastSelectedKey = selectedKey }
     fetchAndRender(true)
   } else {
     // Already on the running tab — re-render so the header picks up the icons
-    // now that the terminal is visible.
+    // now that the terminal is visible, and the newly-selected card highlights.
     renderAll(filterSessions(sessions, searchQuery), selectedKey, activeTab, false)
   }
 }
