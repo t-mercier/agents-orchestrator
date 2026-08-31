@@ -62,8 +62,8 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > - 🔀 **Pull requests carry their state** — open, merged, closed or draft, on the card and spelled out with each PR's title in the detail panel.
 > - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Read through MCP, so the app itself never holds a tracker credential.
 > - ✅ **Close finishes a stale session properly** — it resumes the session headless, writes the summary, attaches the PRs, and moves it to Closed. No terminal opens.
-> - 📂 **A session opens at the root of its space** — the folder you chose in Settings. Move a space, its sessions follow.
 > - 🧠 **Knowledge notes build themselves** — `/learn` writes the moment something durable comes up, extending the note that already owns the subject; an opt-in hook now catches it the instant your own wording states a preference or correction, not only when you ask.
+> - 🛡 **Skills stay in sync — safely** — a new app build now checks its own skills bundle's date against what's on disk. A launch banner offers a real update by name; a stale build warns instead of silently reverting one that would actually go backward.
 >
 > Earlier releases: the [changelog](CHANGELOG.md) has the full history.
 

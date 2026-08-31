@@ -10,6 +10,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.0-alpha] - 2026-08-31
+
 ### Added
 - **"Install / update" warns before it would go backward** — the button force-overwrites
   session skills with whatever this build shipped, but a repo fix landed *after* a given
@@ -32,6 +34,15 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
   offer doesn't silence a later one. The comparison and dialog wording now live in one
   shared module, `renderer/lib/skills-status-copy.js`, used by both surfaces. 11 new
   tests.
+
+### Fixed
+- **`/skills-review`'s loop-health check no longer mistakes a documentation example for
+  a real approval** — a plain `grep` for `origin: agent-proposed` over every `SKILL.md`
+  also matched `skills-curate` and `skill-propose`, which both document that frontmatter
+  key inside a fenced example in their own body, and reported that example's literal
+  template placeholder as the most recent approval date. Reads the frontmatter block
+  only now, and renames the message to make explicit that this check only ever sees
+  **new** skills, not patches to existing ones.
 
 ## [0.10.0-alpha] - 2026-08-31
 
