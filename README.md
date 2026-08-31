@@ -196,6 +196,14 @@ bash scripts/install.sh --with-hooks
 
 That copies the script and prints the one-line entry to paste into the `PostToolUse` → `Bash` hooks of `~/.claude/settings.json`. Wiring is left to you on purpose — that file decides which code Claude Code runs on your machine, and nothing here edits it for you. The hook only ever *adds* a link, never replaces or removes one.
 
+### Optional: a nudge toward `/learn`
+
+`/learn` and `/skill-propose` both say "use PROACTIVELY" in their own description, but that framing only helps if the model happens to re-read it at the right moment — nothing forces the check at the exact turn a correction lands, so the knowledge base ends up depending on you asking for it. The bundled `hooks/learn_nudge.py` closes that gap on the input side: on `UserPromptSubmit`, it checks your message against a short, high-precision phrase list ("always", "never", "from now on", "je préfère", "ne ... plus"...) and, when one matches, injects a one-line reminder for the model to check `/learn`'s or `/skill-propose`'s own criteria — silently, so a message that doesn't actually qualify produces no visible output at all. Throttled to once per session per 15 minutes.
+
+Same install path — it's the second script `--with-hooks` copies and prints a settings.json entry for, this time under `UserPromptSubmit`.
+
+This only catches signal carried in your own wording. A fact or gotcha you never phrase as a standing preference still relies on the model's own judgment, or on `/save-session`/`/close-session`'s distil step — the hook narrows the gap, it doesn't close it.
+
 > [!IMPORTANT]
 > **Working from a clone? `git pull` does not update your skills.** It updates the repo's `skills/`; the copies Claude Code actually loads live in `~/.claude/skills/`. And a plain install **keeps an existing skill untouched** — new skills arrive, but *changed* ones are skipped, so a shipped fix silently never reaches you. After any pull that touches skills:
 >

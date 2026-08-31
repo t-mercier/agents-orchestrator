@@ -3,7 +3,7 @@
 #
 #   bash scripts/install.sh              # install (won't overwrite existing skills)
 #   bash scripts/install.sh --force      # overwrite existing skills
-#   bash scripts/install.sh --with-hooks # also copy the optional PR-attach hook
+#   bash scripts/install.sh --with-hooks # also copy the optional PR-attach + learn-nudge hooks
 #
 # Copies skills/* → ~/.claude/skills/, writes a default config if none exists, and
 # creates the category folders. Never touches your session data.
@@ -93,6 +93,13 @@ if [ "$HOOKS" -eq 1 ]; then
   echo "  To enable it, add this to the PostToolUse \"Bash\" hooks in ~/.claude/settings.json:"
   echo '    { "type": "command", "command": "IN=$(cat); printf '"'"'%s'"'"' \"$IN\" | python3 \"$HOME/.claude/hooks/pr_attach.py\" 2>/dev/null; true" }'
   echo "  It attaches a PR to the session notes the moment \`gh pr create\` opens it."
+  echo
+  cp "$HERE/hooks/learn_nudge.py" "$HOME/.claude/hooks/learn_nudge.py"
+  echo "installed hook script: ~/.claude/hooks/learn_nudge.py"
+  echo "  To enable it, add this to the UserPromptSubmit hooks in ~/.claude/settings.json:"
+  echo '    { "hooks": [ { "type": "command", "command": "python3 \"$HOME/.claude/hooks/learn_nudge.py\" 2>/dev/null; true" } ] }'
+  echo "  It nudges the model to check /learn or /skill-propose the moment a message reads"
+  echo "  like a standing preference or correction (\"always\", \"from now on\", \"ne ... plus\"...)."
 fi
 
 echo

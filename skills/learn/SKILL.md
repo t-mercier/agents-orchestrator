@@ -7,7 +7,11 @@ description: >-
   whose workaround cost real time. Priority: preferences & corrections > environment facts >
   everything else. The test is "does this stop them repeating themselves?". Reusable
   *procedures* belong in a skill (/skill-propose), not here. Trigger on "/learn", "remember
-  that", "note ça", "mets ça dans le vault".
+  that", "note ça", "mets ça dans le vault" — and just as much on the user's own words
+  landing a preference or correction with no slash command at all: "always"/"toujours",
+  "never"/"jamais", "I prefer"/"je préfère", "don't ... anymore"/"ne ... plus", "from now
+  on"/"à l'avenir", "next time"/"la prochaine fois". That phrasing is the signal, not a
+  literal command — check it on every turn, not only when asked.
 allowed-tools: Bash Read Write Edit
 argument-hint: "[what to record]"
 ---

@@ -10,6 +10,19 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **An opt-in hook nudges `/learn` the moment a preference or correction is typed** —
+  `/learn` and `/skill-propose` already say "use PROACTIVELY" in their own description,
+  but nothing forced the check at the actual turn it mattered, so the knowledge notes
+  only grew when you asked for it by name. `hooks/learn_nudge.py` runs on
+  `UserPromptSubmit`: it matches your message against a short, high-precision phrase list
+  ("always", "never", "from now on", "je préfère", "ne ... plus"...) and, on a hit,
+  injects a one-line reminder for the model to check `/learn`'s or `/skill-propose`'s own
+  criteria — silently, so a message that doesn't actually qualify produces no visible
+  output. Throttled to once per session per 15 minutes. Install with
+  `bash scripts/install.sh --with-hooks`, same opt-in path as the PR-attach hook; wiring
+  into `settings.json` is printed, never written for you. 14 tests.
+
 ### Fixed
 - **Resume stops shadowing itself when the frontmatter session_id is dead** — the
   effective resumable id fell back to the newest registered id only when the
