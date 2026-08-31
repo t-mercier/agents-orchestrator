@@ -57,12 +57,29 @@ For each entry also print its one-line rationale — the `description:` for a ne
 A learning loop that quietly stopped firing is worse than no loop, because you believe it
 is working. Always end the listing with:
 
+Read the **frontmatter only**. A plain `grep` over the file matches the skills that document this line
+inside a fenced example (`skills-curate`, `skill-propose`) and then reports their template placeholder
+as a date:
+
 ```bash
-LAST=$(find ~/.claude/skills -mindepth 2 -maxdepth 2 -name SKILL.md -exec grep -l '^origin: agent-proposed' {} + 2>/dev/null \
-       | xargs -r ls -t 2>/dev/null | head -1)
-[ -n "$LAST" ] && echo "Last approved proposal: $(grep -m1 '^proposed_at:' "$LAST" | sed 's/proposed_at: //') ($(basename "$(dirname "$LAST")"))" \
-               || echo "No agent-proposed skill has ever been approved."
+# awk prints only the lines between the first pair of --- markers.
+LAST=$(for f in ~/.claude/skills/*/SKILL.md; do
+         awk '/^---[[:space:]]*$/{n++; next} n==1' "$f" 2>/dev/null \
+           | grep -q '^origin:[[:space:]]*agent-proposed' && echo "$f"
+       done | xargs -r ls -t 2>/dev/null | head -1)
+if [ -n "$LAST" ]; then
+  echo "Last approved new skill: $(awk '/^---[[:space:]]*$/{n++; next} n==1' "$LAST" \
+       | grep -m1 '^proposed_at:' | sed 's/proposed_at: *//') ($(basename "$(dirname "$LAST")"))"
+else
+  echo "No agent-proposed skill has ever been approved."
+fi
+echo "(patches are not counted — approving one deletes its proposal and leaves no record)"
 ```
+
+The trailing line matters: this only ever sees **new skills**. Patches to existing skills are the
+common outcome, and approving one removes the proposal file without marking the target, so a run of
+approved patches still prints "never". Read a "never" as "no new skill", not as "the loop is dead" —
+check whether patches have been landing before concluding anything from it.
 
 If nothing has been proposed **or** approved in the last ~3 weeks of active work, say so
 plainly and run both checks below — a loop that never fires almost always fails at one of
