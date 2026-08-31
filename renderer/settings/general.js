@@ -126,29 +126,20 @@
     const present = (status && status.present) || []
     const differs = (status && status.differs) || []
     if (present.length && window.confirmAction) {
-      const diffNote = differs.length
-        ? ` ${differs.length} of them differ from the bundled version and your changes would be lost: ${differs.join(', ')}.`
-        : ''
-      // Content differing doesn't say WHICH side is newer — this app's own bundle is
-      // dated at build time (last commit that touched skills/), and stamped on disk the
-      // last time some installer (this app, or `scripts/install.sh --force`) confirmed a
-      // full match. Comparing the two catches the case that bit us once already: a repo
-      // fix landing after this app version was built, so "Update" would actually revert it.
-      const bundleEpoch = typeof (status && status.bundle_epoch) === 'number' ? status.bundle_epoch : 0
-      const installedEpoch = typeof (status && status.installed_epoch) === 'number' ? status.installed_epoch : null
-      const known = bundleEpoch > 0 && installedEpoch !== null
-      const fmt = e => new Date(e * 1000).toLocaleDateString()
-      let title = 'Overwrite session skills?'
-      let lead = `This replaces these skills in ~/.claude/skills with the app's bundled versions: ${present.join(', ')}.`
-      if (known && bundleEpoch <= installedEpoch) {
-        title = 'This would go backward'
-        lead = `What's on disk already matches skills as of ${fmt(installedEpoch)} — this app's bundle is from ${fmt(bundleEpoch)}, no later. Overwriting replaces these with the OLDER bundled versions: ${present.join(', ')}.`
-      } else if (known && bundleEpoch > installedEpoch) {
-        lead = `This app's bundle (${fmt(bundleEpoch)}) is newer than what's on disk (${fmt(installedEpoch)}). Updates these to the bundled versions: ${present.join(', ')}.`
-      }
+      // Content differing doesn't say WHICH side is newer — window.CSMSkillsUpdate
+      // (renderer/lib/skills-status-copy.js) compares the bundle's own build-time date
+      // against the last time some installer confirmed a full match on disk, so the
+      // wording catches the case that bit us once already: a repo fix landing after this
+      // app version was built, so "Update" would actually revert it. Falls back to the
+      // plain, date-blind dialog if the module didn't load — never throws either way.
+      const dialog = window.CSMSkillsUpdate
+        ? window.CSMSkillsUpdate.overwriteDialog(status, present, differs)
+        : {
+            title: 'Overwrite session skills?',
+            body: `This replaces these skills in ~/.claude/skills with the app's bundled versions: ${present.join(', ')}.${differs.length ? ` ${differs.length} of them differ from the bundled version and your changes would be lost: ${differs.join(', ')}.` : ''} Your other skills are not touched.`,
+          }
       const ok = await window.confirmAction({
-        title,
-        body: `${lead}${diffNote} Your other skills are not touched.`,
+        ...dialog,
         confirmLabel: `Overwrite ${present.length}`,
       }).then(c => c === 'confirm')
       if (!ok) return

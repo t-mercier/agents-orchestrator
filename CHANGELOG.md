@@ -22,6 +22,16 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
   newer" note when the bundle really is an update, and the original neutral wording when
   either date is unknown (an older app, or a fresh `install.sh` that predates this). 3
   new tests.
+- **A launch banner offers the update, instead of waiting for a trip to Settings** — when
+  the bundle-date check above finds session skills present but genuinely behind, the app
+  now nudges at startup the same way it already does for a fresh install, naming which
+  skills changed. The banner's own button opens the exact same confirm dialog Settings
+  does before applying anything — a newer bundle date doesn't rule out a skill you
+  edited locally after the last stamp, so the named-diff warning still gets a look before
+  anything is overwritten. Dismissal is keyed to that build's date, so declining today's
+  offer doesn't silence a later one. The comparison and dialog wording now live in one
+  shared module, `renderer/lib/skills-status-copy.js`, used by both surfaces. 11 new
+  tests.
 
 ## [0.10.0-alpha] - 2026-08-31
 

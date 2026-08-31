@@ -1216,34 +1216,93 @@ async function seedTabCounts() {
 async function maybeShowSkillsBanner() {
   const el = document.getElementById('skills-banner')
   if (!el || !window.api || !window.api.skillsStatus) return
-  if (localStorage.getItem('csm.skillsBannerDismissed') === '1') return
   let status
   try { status = await window.api.skillsStatus() } catch { return }
-  if (!status || status.installed) return
+  if (!status) return
+  if (!status.installed) {
+    if (localStorage.getItem('csm.skillsBannerDismissed') === '1') return
+    el.innerHTML =
+      '<span class="sb-text">The session skills (<code>/start-session</code>…) aren\'t installed yet. ' +
+      'Install them into <code>~/.claude/skills</code> to drive ＋New, Resume and Restart.</span>' +
+      '<button type="button" class="sb-install">Install skills</button>' +
+      '<button type="button" class="sb-dismiss" aria-label="Dismiss">×</button>'
+    el.hidden = false
+    const install = el.querySelector('.sb-install')
+    install.addEventListener('click', async () => {
+      install.disabled = true; install.textContent = 'Installing…'
+      const res = await window.api.installSkills(false)
+      if (res && res.ok) {
+        el.hidden = true; el.innerHTML = ''
+        if (window.confirmAction) {
+          const n = (res.installed || []).filter(s => s !== 'lib').length
+          const extra = res.config_seeded ? ' A default config was created — set your spaces in Settings (⚙).' : ''
+          window.confirmAction({ title: 'Session skills installed', body: `${n} skills are now in ~/.claude/skills.${extra} Open a fresh Claude Code session to use them.`, confirmLabel: 'OK' })
+        }
+      } else {
+        install.disabled = false; install.textContent = 'Install skills'
+        if (window.confirmAction) window.confirmAction({ title: 'Install failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
+      }
+    })
+    el.querySelector('.sb-dismiss').addEventListener('click', () => {
+      localStorage.setItem('csm.skillsBannerDismissed', '1')
+      el.hidden = true; el.innerHTML = ''
+    })
+    return
+  }
+  maybeShowSkillsUpdateBanner(el, status)
+}
+
+// Skills are present but this build's bundle is dated later than the last confirmed
+// match on disk: nudge toward Settings' own "Install / update" flow instead of making
+// the user go find it. Requires window.CSMSkillsUpdate (renderer/lib/skills-status-copy.js)
+// — silently does nothing without it rather than guess at the wording. Dismissal is keyed
+// by bundle_epoch, not a flat flag: declining today's update must not suppress a LATER
+// one from a future app build.
+//
+// If the dates say "newer" but nothing in `differs` actually changed (bundle content is
+// byte-identical to what's on disk — e.g. install.sh --force already caught it up), this
+// simply shows nothing and re-checks on the next launch; the manifest keeps the older
+// stamp until an installer actually runs, and re-running skills_status() once per launch
+// is cheap enough not to be worth a Rust-side re-stamp endpoint for that edge case.
+function maybeShowSkillsUpdateBanner(el, status) {
+  if (!window.CSMSkillsUpdate) return
+  const cmp = window.CSMSkillsUpdate.compareEpochs(status)
+  if (!cmp.isNewer) return
+  const differs = status.differs || []
+  if (!differs.length) return
+  const dismissKey = 'csm.skillsUpdateDismissedEpoch'
+  if (localStorage.getItem(dismissKey) === String(cmp.bundleEpoch)) return
   el.innerHTML =
-    '<span class="sb-text">The session skills (<code>/start-session</code>…) aren\'t installed yet. ' +
-    'Install them into <code>~/.claude/skills</code> to drive ＋New, Resume and Restart.</span>' +
-    '<button type="button" class="sb-install">Install skills</button>' +
+    `<span class="sb-text">${window.CSMSkillsUpdate.updateBannerText(status, differs)}</span>` +
+    '<button type="button" class="sb-install">Update skills</button>' +
     '<button type="button" class="sb-dismiss" aria-label="Dismiss">×</button>'
   el.hidden = false
-  const install = el.querySelector('.sb-install')
-  install.addEventListener('click', async () => {
-    install.disabled = true; install.textContent = 'Installing…'
-    const res = await window.api.installSkills(false)
+  const present = status.present || []
+  const update = el.querySelector('.sb-install')
+  update.addEventListener('click', async () => {
+    // Same confirm dialog Settings shows — the banner is a shortcut TO that decision,
+    // never a shortcut PAST it. A newer bundle date doesn't prove every differing skill
+    // is stale; one of them could be a local edit made after the last stamp.
+    if (window.confirmAction) {
+      const dialog = window.CSMSkillsUpdate.overwriteDialog(status, present, differs)
+      const ok = await window.confirmAction({ ...dialog, confirmLabel: `Update ${present.length}` }).then(c => c === 'confirm')
+      if (!ok) return
+    }
+    update.disabled = true; update.textContent = 'Updating…'
+    const res = await window.api.installSkills(true)
     if (res && res.ok) {
       el.hidden = true; el.innerHTML = ''
       if (window.confirmAction) {
         const n = (res.installed || []).filter(s => s !== 'lib').length
-        const extra = res.config_seeded ? ' A default config was created — set your spaces in Settings (⚙).' : ''
-        window.confirmAction({ title: 'Session skills installed', body: `${n} skills are now in ~/.claude/skills.${extra} Open a fresh Claude Code session to use them.`, confirmLabel: 'OK' })
+        window.confirmAction({ title: 'Session skills updated', body: `${n} skill${n === 1 ? '' : 's'} updated in ~/.claude/skills. Open a fresh Claude Code session to pick them up.`, confirmLabel: 'OK' })
       }
     } else {
-      install.disabled = false; install.textContent = 'Install skills'
-      if (window.confirmAction) window.confirmAction({ title: 'Install failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
+      update.disabled = false; update.textContent = 'Update skills'
+      if (window.confirmAction) window.confirmAction({ title: 'Update failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
     }
   })
   el.querySelector('.sb-dismiss').addEventListener('click', () => {
-    localStorage.setItem('csm.skillsBannerDismissed', '1')
+    localStorage.setItem(dismissKey, String(cmp.bundleEpoch))
     el.hidden = true; el.innerHTML = ''
   })
 }
