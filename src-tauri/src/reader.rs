@@ -1664,10 +1664,9 @@ mod tests {
         assert!(!notes_records_session(content, ""));
     }
 
-    #[test]
-    /// The rule: a session opens at the root of ITS space. Not where claude was first
-    /// started — that made the directory a property of history, so moving a space in
-    /// Settings left old sessions opening at the old place.
+    // The rule: a session opens at the root of ITS space. Not where claude was first
+    // started — that made the directory a property of history, so moving a space in
+    // Settings left old sessions opening at the old place.
     #[test]
     fn space_root_is_resolved_from_the_session_notes() {
         let cfg = json!({
