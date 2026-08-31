@@ -210,7 +210,7 @@ This only catches signal carried in your own wording. A fact or gotcha you never
 > git pull && bash scripts/install.sh --force
 > ```
 >
-> `--force` is not the default because it overwrites a skill you may have customised — so the installer names the ones whose updates it withheld, and you decide. Note `npm run install:skills` does **not** force. From the app, **Settings → Session skills → Install / update** does force, but installs the bundle compiled into *your* binary — so rebuild (`cargo tauri dev`) after pulling, or use the command above.
+> `--force` is not the default because it overwrites a skill you may have customised — so the installer names the ones whose updates it withheld, and you decide. Note `npm run install:skills` does **not** force. From the app, **Settings → Session skills → Install / update** does force, but installs the bundle compiled into *your* binary — so rebuild (`cargo tauri dev`) after pulling, or use the command above. Either path dates what it installs (the last commit that touched `skills/`), so if the other one is already ahead — say, a fix landed after this app version was built — the confirm dialog says so instead of quietly reverting it.
 >
 > **Updating from an earlier version?** Your config **auto-migrates to v2** on first launch — named spaces + per-space knowledge-notes folders, with a `.v1-backup` kept (see [ADR-015](docs/adr/ADR-015-config-v1-to-v2-migration-flag-gated-self-cleaning.md)). Nothing to do by hand.
 

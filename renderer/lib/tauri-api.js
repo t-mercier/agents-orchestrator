@@ -150,7 +150,7 @@
 
     // ── Session skills installer (src-tauri/src/skills.rs) ──
     // status: which bundled skills are already in ~/.claude/skills (drives the banner).
-    skillsStatus: () => invoke('skills_status').catch(() => ({ installed: true, present: [], missing: [], differs: [] })),
+    skillsStatus: () => invoke('skills_status').catch(() => ({ installed: true, present: [], missing: [], differs: [], bundle_epoch: 0, installed_epoch: null })),
     // install(force): copy bundled skills → ~/.claude/skills (force overwrites existing),
     // seed a default config if absent, pre-create category folders. Returns the report.
     installSkills: (force) =>

@@ -10,6 +10,19 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **"Install / update" warns before it would go backward** — the button force-overwrites
+  session skills with whatever this build shipped, but a repo fix landed *after* a given
+  app version was built stays invisible to it: overwriting with that older bundle looked
+  identical to a real update. Both installers (the app, and `scripts/install.sh --force`)
+  now stamp `~/.claude/skills/.ao-install-manifest.json` with the date of the last commit
+  that touched `skills/`, and the app's own bundle carries the same date baked in at
+  compile time (`build.rs`). The confirm dialog compares the two: "This would go
+  backward" when the on-disk skills are already the same age or newer, a plain "is
+  newer" note when the bundle really is an update, and the original neutral wording when
+  either date is unknown (an older app, or a fresh `install.sh` that predates this). 3
+  new tests.
+
 ## [0.10.0-alpha] - 2026-08-31
 
 ### Added
