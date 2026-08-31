@@ -1252,49 +1252,36 @@ async function maybeShowSkillsBanner() {
   maybeShowSkillsUpdateBanner(el, status)
 }
 
-// Skills are present but this build's bundle is dated later than the last confirmed
-// match on disk: nudge toward Settings' own "Install / update" flow instead of making
-// the user go find it. Requires window.CSMSkillsUpdate (renderer/lib/skills-status-copy.js)
-// — silently does nothing without it rather than guess at the wording. Dismissal is keyed
-// by bundle_epoch, not a flat flag: declining today's update must not suppress a LATER
-// one from a future app build.
-//
-// If the dates say "newer" but nothing in `differs` actually changed (bundle content is
-// byte-identical to what's on disk — e.g. install.sh --force already caught it up), this
-// simply shows nothing and re-checks on the next launch; the manifest keeps the older
-// stamp until an installer actually runs, and re-running skills_status() once per launch
-// is cheap enough not to be worth a Rust-side re-stamp endpoint for that edge case.
+// Skills are present and at least one has moved upstream since the last confirmed sync
+// point, with nothing local standing in the way (skills_status()'s `upstream_only`,
+// computed against the .ao-base/ snapshot in src-tauri/src/skills.rs). Nudge toward the
+// same safe update Settings offers, instead of making the user go find it — safe by
+// construction, so unlike the old force-overwrite banner this applies directly, no
+// confirm gate: a skill you customised via /skill-propose is never in `upstream_only`
+// to begin with, it would show up in `local_only` or `conflicts` instead, untouched.
+// Dismissal is keyed by bundle_epoch, not a flat flag: declining today's update must not
+// suppress a later one shipped in a future build.
 function maybeShowSkillsUpdateBanner(el, status) {
-  if (!window.CSMSkillsUpdate) return
-  const cmp = window.CSMSkillsUpdate.compareEpochs(status)
-  if (!cmp.isNewer) return
-  const differs = status.differs || []
-  if (!differs.length) return
+  const upstreamOnly = status.upstream_only || []
+  if (!upstreamOnly.length) return
   const dismissKey = 'csm.skillsUpdateDismissedEpoch'
-  if (localStorage.getItem(dismissKey) === String(cmp.bundleEpoch)) return
+  const bundleEpoch = typeof status.bundle_epoch === 'number' ? status.bundle_epoch : 0
+  if (localStorage.getItem(dismissKey) === String(bundleEpoch)) return
+  const n = upstreamOnly.length
   el.innerHTML =
-    `<span class="sb-text">${window.CSMSkillsUpdate.updateBannerText(status, differs)}</span>` +
+    `<span class="sb-text">${n} session skill${n === 1 ? '' : 's'} can be updated from upstream: ${upstreamOnly.join(', ')}.</span>` +
     '<button type="button" class="sb-install">Update skills</button>' +
     '<button type="button" class="sb-dismiss" aria-label="Dismiss">×</button>'
   el.hidden = false
-  const present = status.present || []
   const update = el.querySelector('.sb-install')
   update.addEventListener('click', async () => {
-    // Same confirm dialog Settings shows — the banner is a shortcut TO that decision,
-    // never a shortcut PAST it. A newer bundle date doesn't prove every differing skill
-    // is stale; one of them could be a local edit made after the last stamp.
-    if (window.confirmAction) {
-      const dialog = window.CSMSkillsUpdate.overwriteDialog(status, present, differs)
-      const ok = await window.confirmAction({ ...dialog, confirmLabel: `Update ${present.length}` }).then(c => c === 'confirm')
-      if (!ok) return
-    }
     update.disabled = true; update.textContent = 'Updating…'
-    const res = await window.api.installSkills(true)
+    const res = window.api.updateSkills ? await window.api.updateSkills() : { ok: false, error: 'updateSkills unavailable' }
     if (res && res.ok) {
       el.hidden = true; el.innerHTML = ''
       if (window.confirmAction) {
-        const n = (res.installed || []).filter(s => s !== 'lib').length
-        window.confirmAction({ title: 'Session skills updated', body: `${n} skill${n === 1 ? '' : 's'} updated in ~/.claude/skills. Open a fresh Claude Code session to pick them up.`, confirmLabel: 'OK' })
+        const body = window.CSMSkillsUpdate ? window.CSMSkillsUpdate.updateResultText(res) : 'Done.'
+        window.confirmAction({ title: 'Session skills updated', body: `${body} Open a fresh Claude Code session to pick them up.`, confirmLabel: 'OK' })
       }
     } else {
       update.disabled = false; update.textContent = 'Update skills'
@@ -1302,7 +1289,7 @@ function maybeShowSkillsUpdateBanner(el, status) {
     }
   })
   el.querySelector('.sb-dismiss').addEventListener('click', () => {
-    localStorage.setItem(dismissKey, String(cmp.bundleEpoch))
+    localStorage.setItem(dismissKey, String(bundleEpoch))
     el.hidden = true; el.innerHTML = ''
   })
 }

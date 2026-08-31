@@ -71,10 +71,28 @@ describe('overwriteDialog', () => {
   })
 })
 
-describe('updateBannerText', () => {
-  it('names both dates and the skills that would change', () => {
-    const text = S.updateBannerText({ bundle_epoch: NEWER, installed_epoch: OLDER }, ['skills-review'])
-    expect(text).toMatch(/newer version of the session skills is available/)
+describe('updateResultText', () => {
+  it('names installed, updated, kept-local and conflicting skills', () => {
+    const text = S.updateResultText({
+      installed: ['lib', 'new-one'],
+      updated: ['close-session'],
+      kept_local: ['start-session'],
+      conflicts: ['skills-review'],
+    })
+    expect(text).toContain('Installed 1 new skill: new-one.')
+    expect(text).not.toContain('lib') // filtered out — not a slash-command skill
+    expect(text).toContain('Updated 1 from upstream: close-session.')
+    expect(text).toContain('Kept your own changes to 1, not touched: start-session.')
+    expect(text).toContain('both your changes and an upstream update')
     expect(text).toContain('skills-review')
+  })
+
+  it('says "already up to date" when nothing happened', () => {
+    expect(S.updateResultText({ installed: ['lib'], updated: [], kept_local: [], conflicts: [] }))
+      .toBe('Already up to date.')
+  })
+
+  it('tolerates missing fields entirely', () => {
+    expect(S.updateResultText({})).toBe('Already up to date.')
   })
 })

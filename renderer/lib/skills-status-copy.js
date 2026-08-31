@@ -1,8 +1,9 @@
-// Shared "would this Install/update go backward?" logic for session skills. UMD:
-// window.CSMSkillsUpdate in the renderer + require() in jest. Pure — no DOM, no
-// window.api — so both the Settings button (renderer/settings/general.js) and the
-// automatic launch banner (renderer/app.js) compare dates and word the dialog the same
-// way instead of drifting apart.
+// Shared session-skills-update copy for the renderer. UMD: window.CSMSkillsUpdate +
+// require() in jest. Pure — no DOM, no window.api. Two independent concerns share this
+// file because both are about the same button: `updateResultText` summarises what the
+// safe, base-aware update (src-tauri/src/skills.rs update_skills()) actually did;
+// `compareEpochs`/`overwriteDialog` word the EXPLICIT "reset to bundled version" escape
+// hatch, which can discard local changes and so still warns by date before acting.
 (function (root, factory) {
   const api = factory()
   if (typeof module !== 'undefined' && module.exports) module.exports = api
@@ -49,12 +50,31 @@
     return { title, body: `${lead}${diffNote} Your other skills are not touched.` }
   }
 
-  // The one-line banner text for the automatic "an update is available" nudge — only
-  // meaningful once the caller has already confirmed compareEpochs(status).isNewer.
-  function updateBannerText(status, differs) {
-    const cmp = compareEpochs(status)
-    return `A newer version of the session skills is available (${fmtDate(cmp.bundleEpoch)}, you have ${fmtDate(cmp.installedEpoch)}): ${differs.join(', ')}.`
+  // Summarises an UpdateReport (src-tauri/src/skills.rs update_skills()) into one
+  // string for the result dialog — shared by Settings' "Install / update" button and
+  // the launch banner's own CTA, so both report the same way. `installed` filters out
+  // `lib` (always refreshed, never itself a slash-command skill worth naming).
+  function updateResultText(report) {
+    const installed = (report.installed || []).filter(s => s !== 'lib')
+    const updated = report.updated || []
+    const keptLocal = report.kept_local || []
+    const conflicts = report.conflicts || []
+    const bits = []
+    if (installed.length) {
+      bits.push(`Installed ${installed.length} new skill${installed.length === 1 ? '' : 's'}: ${installed.join(', ')}.`)
+    }
+    if (updated.length) {
+      bits.push(`Updated ${updated.length} from upstream: ${updated.join(', ')}.`)
+    }
+    if (keptLocal.length) {
+      bits.push(`Kept your own changes to ${keptLocal.length}, not touched: ${keptLocal.join(', ')}.`)
+    }
+    if (conflicts.length) {
+      bits.push(`${conflicts.length} have both your changes and an upstream update, so nothing was applied automatically: ${conflicts.join(', ')}.`)
+    }
+    if (!bits.length) bits.push('Already up to date.')
+    return bits.join(' ')
   }
 
-  return { fmtDate, compareEpochs, overwriteDialog, updateBannerText }
+  return { fmtDate, compareEpochs, overwriteDialog, updateResultText }
 })

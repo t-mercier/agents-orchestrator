@@ -10,6 +10,23 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **A skills update can no longer lose what you improved via `/skill-propose`** — the
+  previous release could only tell "the bundle is dated later" from "it's dated
+  earlier", which doesn't say whether a differing skill is genuinely stale or one you
+  patched yourself; a date alone can't distinguish those. Each skill now gets a
+  `.ao-base/` snapshot — a pristine copy of its content as of the last confirmed sync
+  point — and both installers keep it current. `update_skills()` classifies each present
+  skill against its base: only the bundle moved → adopt it; only the disk moved (a hand
+  edit, or an approved `/skill-propose` patch) → never touch it; both moved, or no base
+  exists yet and they already differ → leave it alone and name it, rather than guess.
+  Settings' "Install / update" button and the launch banner both call this by default
+  now — no confirm gate, since nothing destructive can happen. The old force-overwrite
+  behavior is still available as an explicit "Reset a skill you've customised…" link,
+  with its own by-name warning. 7 new Rust tests (the classification matrix, bootstrapping
+  a pre-existing install without erasing it, adopting/keeping/skipping); jest suite
+  extended to 131.
+
 ## [0.11.0-alpha] - 2026-08-31
 
 ### Added

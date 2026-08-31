@@ -226,6 +226,21 @@ html, body {
 .modal-btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .modal-btn.primary:hover { filter: brightness(1.1); color: var(--on-accent); }
 
+/* A rarely-needed, explicitly destructive escape hatch (e.g. "reset to bundled
+   version") — text-only so it doesn't compete visually with the safe default action. */
+.modal-btn-quiet {
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  padding: 6px 0 0;
+  margin: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.modal-btn-quiet:hover { color: var(--text-primary); }
+
 /* ===== Settings Modal ===== */
 /* Settings modal — tabbed: left nav rail + a scrollable panel per tab. */
 .modal-wide { width: 600px; }

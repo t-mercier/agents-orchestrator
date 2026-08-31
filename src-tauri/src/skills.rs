@@ -60,6 +60,86 @@ fn write_installed_epoch(dst: &Path, epoch: i64) {
     let _ = fs::write(dst.join(MANIFEST_FILE), body);
 }
 
+/// Where the 3-way base snapshots live — one pristine copy of each skill, as it stood
+/// the last time an installer *adopted* a bundle for it. Sibling of `.archive/` (already
+/// under `~/.claude/skills/`, already excluded from every `*/SKILL.md` glob and from the
+/// bundle's own directory iteration, since neither name is a skill this bundle carries).
+const BASE_DIR: &str = ".ao-base";
+
+/// How a skill's on-disk copy relates to its last known base and to this bundle.
+/// `LocalOnly` and `Conflict` never trigger a write — the whole point of tracking a base
+/// per skill is telling "a `/skill-propose` patch survived an app update" from "this
+/// skill is just stale", which a single date or a single differs-or-not bit cannot.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum SkillClass {
+    /// Base, bundle and disk already agree (or would, once a missing base is seeded) —
+    /// nothing to do.
+    UpToDate,
+    /// Only the bundle moved since the base was last confirmed. Safe to adopt.
+    UpstreamOnly,
+    /// Only the on-disk copy moved since the base was last confirmed — a `/skill-propose`
+    /// patch or a hand edit. Never touched.
+    LocalOnly,
+    /// Both moved since the base was last confirmed (including: no base exists yet AND
+    /// disk already differs from the bundle — which side moved first is unknowable).
+    /// Never touched; surfaced by name so a human can decide.
+    Conflict,
+}
+
+/// Classify `target` against `bundle_dir` using the pristine snapshot at `base` (if any).
+/// Pure — no I/O beyond reading the three trees; never writes.
+fn classify_skill(bundle_dir: &Dir, base: &Path, target: &Path) -> SkillClass {
+    if !base.exists() {
+        // No base yet (a pre-existing install, from before this feature, or a skill that
+        // has never been through an installer that stamps one). We only know one bit:
+        // does the bundle already match what's on disk? If so there is nothing to lose
+        // by treating this as up to date and starting to track it. If not, we genuinely
+        // cannot tell whether the bundle moved, the disk moved, or both — call it a
+        // conflict rather than guess, same as if both had moved with a real base.
+        return if dir_differs(bundle_dir, target) { SkillClass::Conflict } else { SkillClass::UpToDate };
+    }
+    let bundle_moved = dir_differs(bundle_dir, base);
+    let disk_moved = paths_differ(base, target);
+    match (bundle_moved, disk_moved) {
+        (false, false) => SkillClass::UpToDate,
+        (true, false) => SkillClass::UpstreamOnly,
+        (false, true) => SkillClass::LocalOnly,
+        (true, true) => SkillClass::Conflict,
+    }
+}
+
+/// True if the file trees at `a` and `b` differ in any way — an extra file on either
+/// side, a missing one, or different bytes. Both sides are read fully into memory as
+/// relative-path → bytes maps and compared; skill directories are small (a `SKILL.md`
+/// plus maybe a `references/` folder), so this is not a concern at this scale.
+fn paths_differ(a: &Path, b: &Path) -> bool {
+    fn snapshot(root: &Path) -> std::collections::BTreeMap<std::path::PathBuf, Vec<u8>> {
+        fn walk(dir: &Path, root: &Path, out: &mut std::collections::BTreeMap<std::path::PathBuf, Vec<u8>>) {
+            let Ok(entries) = fs::read_dir(dir) else { return };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, root, out);
+                } else if let (Ok(rel), Ok(bytes)) = (path.strip_prefix(root), fs::read(&path)) {
+                    out.insert(rel.to_path_buf(), bytes);
+                }
+            }
+        }
+        let mut out = std::collections::BTreeMap::new();
+        walk(root, root, &mut out);
+        out
+    }
+    snapshot(a) != snapshot(b)
+}
+
+/// Replace `dst`'s base snapshot for a skill with the bundle's current content.
+/// Best-effort, mirroring `write_installed_epoch`: a failed write just leaves the
+/// previous (or absent) base, which only makes the next classification MORE cautious.
+fn refresh_base(bundle_dir: &Dir, base: &Path) {
+    let _ = fs::remove_dir_all(base);
+    let _ = extract_into(bundle_dir, base);
+}
+
 #[derive(Serialize)]
 pub struct InstallReport {
     /// Skill dirs written this run (always includes `lib`).
@@ -90,6 +170,17 @@ pub struct SkillsStatus {
     /// `bundle_epoch` so the UI can tell "this install would go backward" from "this is
     /// a real update" instead of just "these differ".
     pub installed_epoch: Option<i64>,
+    /// Present skills only the bundle moved on since the last confirmed base — safe for
+    /// `update_skills()` to adopt automatically.
+    pub upstream_only: Vec<String>,
+    /// Present skills only the on-disk copy moved on since the last confirmed base — a
+    /// `/skill-propose` patch or a hand edit. `update_skills()` never touches these.
+    pub local_only: Vec<String>,
+    /// Present skills where BOTH sides moved since the last confirmed base (or where no
+    /// base exists yet and the bundle already differs, so which side moved first is
+    /// unknowable). `update_skills()` never touches these either; named so a human can
+    /// resolve them, e.g. via the explicit force-overwrite path.
+    pub conflicts: Vec<String>,
 }
 
 /// The slash-command skill names the bundle carries (excludes the shared `lib`).
@@ -176,6 +267,10 @@ fn install_into(dst: &Path, force: bool, epoch: i64) -> std::io::Result<(Vec<Str
             fs::remove_dir_all(&target)?;
         }
         extract_into(d, &target)?;
+        // Whichever path wrote this skill, disk now equals the bundle — the base for
+        // future 3-way comparisons (update_into) must equal it too, or a later smart
+        // update would misjudge this skill as locally-patched relative to a stale base.
+        refresh_base(d, &dst.join(BASE_DIR).join(&name));
         installed.push(name);
     }
     installed.sort();
@@ -206,7 +301,13 @@ pub fn install_skills(force: bool) -> Result<InstallReport, String> {
 #[tauri::command]
 pub fn skills_status() -> SkillsStatus {
     let dst = config::home().join(".claude").join("skills");
-    let (mut present, mut missing, mut differs) = (Vec::new(), Vec::new(), Vec::new());
+    let base_root = dst.join(BASE_DIR);
+    let mut present = Vec::new();
+    let mut missing = Vec::new();
+    let mut differs = Vec::new();
+    let mut upstream_only = Vec::new();
+    let mut local_only = Vec::new();
+    let mut conflicts = Vec::new();
     for d in SKILLS.dirs() {
         let Some(name) = d.path().file_name().map(|n| n.to_string_lossy().into_owned()) else {
             continue;
@@ -222,11 +323,20 @@ pub fn skills_status() -> SkillsStatus {
         if dir_differs(d, &target) {
             differs.push(name.clone());
         }
+        match classify_skill(d, &base_root.join(&name), &target) {
+            SkillClass::UpToDate => {}
+            SkillClass::UpstreamOnly => upstream_only.push(name.clone()),
+            SkillClass::LocalOnly => local_only.push(name.clone()),
+            SkillClass::Conflict => conflicts.push(name.clone()),
+        }
         present.push(name);
     }
     present.sort();
     missing.sort();
     differs.sort();
+    upstream_only.sort();
+    local_only.sort();
+    conflicts.sort();
     SkillsStatus {
         installed: missing.is_empty(),
         present,
@@ -234,7 +344,124 @@ pub fn skills_status() -> SkillsStatus {
         differs,
         bundle_epoch: bundle_epoch(),
         installed_epoch: read_installed_epoch(&dst),
+        upstream_only,
+        local_only,
+        conflicts,
     }
+}
+
+/// Report from `update_skills()` — the smart, base-aware counterpart to `install_skills`.
+#[derive(Serialize)]
+pub struct UpdateReport {
+    /// Skills that were missing entirely, installed fresh (always includes `lib`).
+    pub installed: Vec<String>,
+    /// Present skills adopted from the bundle because only it had moved since the last
+    /// confirmed base.
+    pub updated: Vec<String>,
+    /// Present skills left untouched because only the on-disk copy had moved — a
+    /// `/skill-propose` patch, or a hand edit, survives.
+    pub kept_local: Vec<String>,
+    /// Present skills where both sides moved (or no base exists and they already
+    /// differ): left untouched, named so a human can resolve them.
+    pub conflicts: Vec<String>,
+    pub config_seeded: bool,
+    pub dirs_created: Vec<String>,
+}
+
+/// Update `dst`'s skills against the bundle without ever discarding a local change:
+/// - missing skills are installed fresh, same as `install_into`;
+/// - a skill only the bundle moved on is adopted, and its base refreshed;
+/// - a skill only the disk moved on (or where neither side is resolvable — no base yet
+///   and it already differs) is left exactly as it is.
+///
+/// `lib/` is always refreshed regardless — it is app-owned, never a target for
+/// `/skill-propose`, and was never given base tracking to begin with.
+///
+/// Pure I/O on `dst`, unit-testable against a temp dir, same shape as `install_into`.
+fn update_into(
+    dst: &Path,
+) -> std::io::Result<(Vec<String>, Vec<String>, Vec<String>, Vec<String>)> {
+    let mut installed = Vec::new();
+    let mut updated = Vec::new();
+    let mut kept_local = Vec::new();
+    let mut conflicts = Vec::new();
+    let base_root = dst.join(BASE_DIR);
+    fs::create_dir_all(dst)?;
+    for d in SKILLS.dirs() {
+        let Some(name) = d.path().file_name().map(|n| n.to_string_lossy().into_owned()) else {
+            continue;
+        };
+        let target = dst.join(&name);
+        if name == SHARED_LIB {
+            extract_into(d, &target)?;
+            installed.push(name);
+            continue;
+        }
+        if !target.exists() {
+            extract_into(d, &target)?;
+            refresh_base(d, &base_root.join(&name));
+            installed.push(name);
+            continue;
+        }
+        let base = base_root.join(&name);
+        match classify_skill(d, &base, &target) {
+            SkillClass::UpToDate => {
+                // Bootstrap: no base yet, but content already matches — start tracking
+                // from here without touching the (already-correct) skill itself.
+                if !base.exists() {
+                    refresh_base(d, &base);
+                }
+            }
+            SkillClass::UpstreamOnly => {
+                fs::remove_dir_all(&target)?;
+                extract_into(d, &target)?;
+                refresh_base(d, &base);
+                updated.push(name);
+            }
+            SkillClass::LocalOnly => {
+                kept_local.push(name);
+            }
+            SkillClass::Conflict => {
+                // Bootstrap-conflict (no base, already differs): start tracking from
+                // THIS bundle going forward, without touching or judging what's on disk
+                // now. A real conflict (base existed, both sides moved): leave the base
+                // as-is too — refreshing it here would silently resolve the conflict in
+                // the bundle's favour on the next check, which is exactly the silent
+                // loss this whole mechanism exists to prevent.
+                if !base.exists() {
+                    refresh_base(d, &base);
+                }
+                conflicts.push(name);
+            }
+        }
+    }
+    installed.sort();
+    updated.sort();
+    kept_local.sort();
+    conflicts.sort();
+    Ok((installed, updated, kept_local, conflicts))
+}
+
+/// The safe counterpart to `install_skills(force)`: adopts bundle changes only where
+/// nothing local would be lost, seeds config/category folders same as `install_skills`,
+/// and stamps the epoch manifest only when the tree now fully matches the bundle (no
+/// `kept_local`, no `conflicts` left standing) — the same "never claim a match that
+/// isn't there" rule `install_into` already follows.
+#[tauri::command]
+pub fn update_skills() -> Result<UpdateReport, String> {
+    let dst = config::home().join(".claude").join("skills");
+    let (installed, updated, kept_local, conflicts) = update_into(&dst).map_err(|e| e.to_string())?;
+    let config_seeded = config::seed_default_if_absent()?;
+    let mut dirs_created = Vec::new();
+    for base in config::category_base_dirs() {
+        if !base.exists() && fs::create_dir_all(&base).is_ok() {
+            dirs_created.push(base.to_string_lossy().into_owned());
+        }
+    }
+    if kept_local.is_empty() && conflicts.is_empty() {
+        write_installed_epoch(&dst, bundle_epoch());
+    }
+    Ok(UpdateReport { installed, updated, kept_local, conflicts, config_seeded, dirs_created })
 }
 
 #[cfg(test)]
@@ -359,6 +586,153 @@ mod tests {
         assert_eq!(read_installed_epoch(&dst), None, "unparsable manifest");
         fs::write(dst.join(MANIFEST_FILE), b"{}").unwrap();
         assert_eq!(read_installed_epoch(&dst), None, "manifest missing the key");
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    // ── 3-way classification (classify_skill / paths_differ) ──
+
+    #[test]
+    fn paths_differ_catches_bytes_extra_and_missing_files() {
+        let dst = tmp("paths-differ");
+        let a = dst.join("a");
+        let b = dst.join("b");
+        fs::create_dir_all(&a).unwrap();
+        fs::create_dir_all(&b).unwrap();
+        fs::write(a.join("f"), b"same").unwrap();
+        fs::write(b.join("f"), b"same").unwrap();
+        assert!(!paths_differ(&a, &b), "identical single file");
+
+        fs::write(b.join("f"), b"different").unwrap();
+        assert!(paths_differ(&a, &b), "different bytes");
+
+        fs::write(b.join("f"), b"same").unwrap();
+        fs::write(b.join("extra"), b"x").unwrap();
+        assert!(paths_differ(&a, &b), "extra file on one side");
+
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    #[test]
+    fn classify_skill_matrix() {
+        let dst = tmp("classify");
+        let bundle = SKILLS.get_dir("start-session").expect("bundled start-session");
+        let base = dst.join("base");
+        let target = dst.join("target");
+
+        // No base yet, disk already matches the bundle → up to date (silent bootstrap).
+        extract_into(bundle, &target).unwrap();
+        assert_eq!(classify_skill(bundle, &base, &target), SkillClass::UpToDate);
+
+        // No base yet, disk already differs → conflict (unknowable which side moved).
+        fs::write(target.join("SKILL.md"), b"EDITED BEFORE ANY BASE").unwrap();
+        assert_eq!(classify_skill(bundle, &base, &target), SkillClass::Conflict);
+
+        // A base exists and everything agrees → up to date.
+        extract_into(bundle, &base).unwrap();
+        extract_into(bundle, &target).unwrap();
+        assert_eq!(classify_skill(bundle, &base, &target), SkillClass::UpToDate);
+
+        // Only disk moved since the base → local-only (a /skill-propose patch).
+        fs::write(target.join("SKILL.md"), b"LOCAL PATCH").unwrap();
+        assert_eq!(classify_skill(bundle, &base, &target), SkillClass::LocalOnly);
+
+        // Simulate upstream moving on: base and disk still agree with EACH OTHER at some
+        // older shared point (disk never independently diverged from base) — but the
+        // real bundle (fixed, embedded) has moved past that point → upstream-only.
+        fs::write(base.join("SKILL.md"), b"OLDER SHARED POINT").unwrap();
+        fs::write(target.join("SKILL.md"), b"OLDER SHARED POINT").unwrap();
+        assert_eq!(classify_skill(bundle, &base, &target), SkillClass::UpstreamOnly);
+
+        // Both the base-vs-bundle gap AND a disk edit on top → conflict.
+        fs::write(target.join("SKILL.md"), b"LOCAL PATCH ON TOP OF STALE BASE").unwrap();
+        assert_eq!(classify_skill(bundle, &base, &target), SkillClass::Conflict);
+
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    // ── update_into: the base-aware update ──
+
+    #[test]
+    fn update_installs_missing_skills_fresh_and_seeds_their_base() {
+        let dst = tmp("update-fresh");
+        let (installed, updated, kept_local, conflicts) = update_into(&dst).unwrap();
+        assert!(installed.contains(&"lib".to_string()));
+        assert!(installed.contains(&"start-session".to_string()));
+        assert!(updated.is_empty() && kept_local.is_empty() && conflicts.is_empty());
+        assert!(dst.join(BASE_DIR).join("start-session/SKILL.md").exists());
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    #[test]
+    fn update_adopts_upstream_only_changes() {
+        let dst = tmp("update-upstream");
+        update_into(&dst).unwrap(); // seeds base == bundle == disk for every skill
+        // Simulate the bundle moving on: base and disk still agree with each other at
+        // an older shared point, but the real (fixed, embedded) bundle has moved past it.
+        fs::write(dst.join(BASE_DIR).join("start-session/SKILL.md"), b"OLDER").unwrap();
+        fs::write(dst.join("start-session/SKILL.md"), b"OLDER").unwrap();
+        let (_, updated, kept_local, conflicts) = update_into(&dst).unwrap();
+        assert!(updated.contains(&"start-session".to_string()));
+        assert!(kept_local.is_empty() && conflicts.is_empty());
+        // The skill itself was adopted from the bundle, and the base refreshed to match.
+        let bundle = SKILLS.get_dir("start-session").unwrap();
+        assert!(!dir_differs(bundle, &dst.join("start-session")));
+        assert!(!paths_differ(&dst.join(BASE_DIR).join("start-session"), &dst.join("start-session")));
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    #[test]
+    fn update_never_touches_a_skill_propose_patch() {
+        let dst = tmp("update-local");
+        update_into(&dst).unwrap();
+        // Simulate an approved /skill-propose patch: disk moves, base does not.
+        fs::write(dst.join("start-session/SKILL.md"), b"MY OWN IMPROVEMENT").unwrap();
+        let (_, updated, kept_local, conflicts) = update_into(&dst).unwrap();
+        assert!(kept_local.contains(&"start-session".to_string()));
+        assert!(updated.is_empty() && conflicts.is_empty());
+        // Untouched, byte for byte — this is the whole point.
+        assert_eq!(fs::read(dst.join("start-session/SKILL.md")).unwrap(), b"MY OWN IMPROVEMENT");
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    #[test]
+    fn update_names_a_conflict_and_touches_nothing() {
+        let dst = tmp("update-conflict");
+        update_into(&dst).unwrap();
+        // Both sides moved since the shared base.
+        fs::write(dst.join(BASE_DIR).join("start-session/SKILL.md"), b"OLDER").unwrap();
+        fs::write(dst.join("start-session/SKILL.md"), b"MY OWN IMPROVEMENT ON TOP").unwrap();
+        let (_, updated, kept_local, conflicts) = update_into(&dst).unwrap();
+        assert!(conflicts.contains(&"start-session".to_string()));
+        assert!(updated.is_empty() && kept_local.is_empty());
+        assert_eq!(
+            fs::read(dst.join("start-session/SKILL.md")).unwrap(),
+            b"MY OWN IMPROVEMENT ON TOP",
+            "a conflict must never be silently resolved either way"
+        );
+        let _ = fs::remove_dir_all(&dst);
+    }
+
+    #[test]
+    fn update_bootstraps_a_pre_existing_install_without_erasing_it() {
+        let dst = tmp("update-bootstrap");
+        // Simulate an install from before this feature existed: no .ao-base/ at all,
+        // and the skill already has a locally-patched, never-tracked copy.
+        let bundle = SKILLS.get_dir("start-session").unwrap();
+        extract_into(bundle, &dst.join("start-session")).unwrap();
+        fs::write(dst.join("start-session/SKILL.md"), b"PRE-EXISTING LOCAL PATCH").unwrap();
+        assert!(!dst.join(BASE_DIR).exists());
+
+        let (_, updated, kept_local, conflicts) = update_into(&dst).unwrap();
+        assert!(conflicts.contains(&"start-session".to_string()), "unknowable on first sight");
+        assert!(updated.is_empty() && kept_local.is_empty());
+        assert_eq!(
+            fs::read(dst.join("start-session/SKILL.md")).unwrap(),
+            b"PRE-EXISTING LOCAL PATCH",
+            "bootstrap must never erase what was already there"
+        );
+        // But tracking now starts: a base was seeded from THIS bundle for next time.
+        assert!(dst.join(BASE_DIR).join("start-session/SKILL.md").exists());
         let _ = fs::remove_dir_all(&dst);
     }
 }

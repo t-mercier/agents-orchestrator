@@ -149,10 +149,23 @@
         .catch((e) => ({ ok: false, error: String(e) })),
 
     // ── Session skills installer (src-tauri/src/skills.rs) ──
-    // status: which bundled skills are already in ~/.claude/skills (drives the banner).
-    skillsStatus: () => invoke('skills_status').catch(() => ({ installed: true, present: [], missing: [], differs: [], bundle_epoch: 0, installed_epoch: null })),
-    // install(force): copy bundled skills → ~/.claude/skills (force overwrites existing),
-    // seed a default config if absent, pre-create category folders. Returns the report.
+    // status: which bundled skills are already in ~/.claude/skills (drives the banner),
+    // plus the 3-way classification against each skill's .ao-base/ snapshot
+    // (upstream_only/local_only/conflicts) that updateSkills() below acts on.
+    skillsStatus: () => invoke('skills_status').catch(() => ({
+      installed: true, present: [], missing: [], differs: [], bundle_epoch: 0, installed_epoch: null,
+      upstream_only: [], local_only: [], conflicts: [],
+    })),
+    // The safe update: installs missing skills, adopts a skill only the bundle moved on
+    // (upstream_only), and never touches one only the disk moved on (local_only) or
+    // where both sides moved (conflicts) — those come back named, untouched.
+    updateSkills: () =>
+      invoke('update_skills')
+        .then((r) => ({ ok: true, ...(r || {}) }))
+        .catch((e) => ({ ok: false, error: String(e) })),
+    // The explicit escape hatch: force EVERY bundled skill to exactly what this app
+    // ships, including ones with local changes. Settings' own confirm dialog is the
+    // only place this is still called from — never automatically.
     installSkills: (force) =>
       invoke('install_skills', { force: !!force })
         .then((r) => ({ ok: true, ...(r || {}) }))
