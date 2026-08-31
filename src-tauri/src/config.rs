@@ -487,6 +487,14 @@ mod tests {
         assert_eq!(d["scanDirs"].as_array().unwrap().len(), 6);
     }
 
+    // The skill-learning loop (skillProposals) ships on: a fresh install must not require
+    // finding and hand-setting a key that appears nowhere in Settings to get the product's
+    // own default behaviour.
+    #[test]
+    fn default_config_ships_skill_proposals_on() {
+        assert_eq!(default_config()["skillProposals"], true);
+    }
+
 
     // The `obsidian` → `knowledge` rename must never break an existing config: the legacy
     // key is still read, and the derived output only ever carries the new name.

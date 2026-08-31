@@ -23,6 +23,18 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
   `bash scripts/install.sh --with-hooks`, same opt-in path as the PR-attach hook; wiring
   into `settings.json` is printed, never written for you. 14 tests.
 
+### Changed
+- **The skill-learning loop is on by default** — `skillProposals` shipped as an opt-in, so
+  `/close-session` and `/save-session` never offered to capture what a session taught
+  unless the key was set by hand, and the key was written nowhere: absent from Settings
+  and from the seed config. A loop nobody can discover reads as a dead feature rather
+  than an opt-out, and the absence was invisible — `/skills-review` reported "nothing
+  pending" whether the gate was off or there was genuinely nothing to propose. Fixed on
+  both sides: `default_config()` now writes `skillProposals: true` for a fresh install,
+  and an absent key reads as on for every config written before the key existed, so
+  nobody has to re-run Settings to pick it up. An explicit `false` still wins, so opting
+  out stays possible.
+
 ### Fixed
 - **Resume stops shadowing itself when the frontmatter session_id is dead** — the
   effective resumable id fell back to the newest registered id only when the
