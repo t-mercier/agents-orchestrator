@@ -63,8 +63,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Read through MCP, so the app itself never holds a tracker credential.
 > - ✅ **Close finishes a stale session properly** — it resumes the session headless, writes the summary, attaches the PRs, and moves it to Closed. No terminal opens.
 > - 📂 **A session opens at the root of its space** — the folder you chose in Settings. Move a space, its sessions follow.
-> - 🧠 **Knowledge notes fill as you work** — `/learn` writes a note the moment something durable comes up, extending the note that already owns the subject instead of duplicating it.
-> - 📥 **Adopt any session you started outside the app** — the *Recent · unmanaged* list pages through all of them.
+> - 🧠 **Knowledge notes build themselves** — `/learn` writes the moment something durable comes up, extending the note that already owns the subject; an opt-in hook now catches it the instant your own wording states a preference or correction, not only when you ask.
 >
 > Earlier releases: the [changelog](CHANGELOG.md) has the full history.
 

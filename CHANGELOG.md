@@ -10,6 +10,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0-alpha] - 2026-08-31
+
 ### Added
 - **An opt-in hook nudges `/learn` the moment a preference or correction is typed** —
   `/learn` and `/skill-propose` already say "use PROACTIVELY" in their own description,
