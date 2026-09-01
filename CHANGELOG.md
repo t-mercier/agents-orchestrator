@@ -10,6 +10,8 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.1-alpha] - 2026-09-01
+
 ### Changed
 - **The app's session skills are app-owned, and keep themselves current** — nobody
   customises File > Save, and the lifecycle skills (`/start-session`, `/close-session`…)
