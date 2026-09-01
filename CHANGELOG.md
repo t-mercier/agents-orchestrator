@@ -10,22 +10,26 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
-- **A skills update can no longer lose what you improved via `/skill-propose`** — the
-  previous release could only tell "the bundle is dated later" from "it's dated
-  earlier", which doesn't say whether a differing skill is genuinely stale or one you
-  patched yourself; a date alone can't distinguish those. Each skill now gets a
-  `.ao-base/` snapshot — a pristine copy of its content as of the last confirmed sync
-  point — and both installers keep it current. `update_skills()` classifies each present
-  skill against its base: only the bundle moved → adopt it; only the disk moved (a hand
-  edit, or an approved `/skill-propose` patch) → never touch it; both moved, or no base
-  exists yet and they already differ → leave it alone and name it, rather than guess.
-  Settings' "Install / update" button and the launch banner both call this by default
-  now — no confirm gate, since nothing destructive can happen. The old force-overwrite
-  behavior is still available as an explicit "Reset a skill you've customised…" link,
-  with its own by-name warning. 7 new Rust tests (the classification matrix, bootstrapping
-  a pre-existing install without erasing it, adopting/keeping/skipping); jest suite
-  extended to 131.
+### Changed
+- **The app's session skills are app-owned, and keep themselves current** — nobody
+  customises File > Save, and the lifecycle skills (`/start-session`, `/close-session`…)
+  are the same kind of primitive: if editing one ever feels necessary, that is product
+  feedback, not a customisation need. So the app now syncs them silently at launch, the
+  way any app maintains its own resources — no update banner asking permission, no
+  Settings trip. Two rules make the silence safe. *Direction*: an app built before your
+  last `install.sh --force` run stands down instead of reverting it at every launch
+  (the epoch manifest both installers already stamp decides). *No silent loss*: a skill
+  edited outside the installers — detected against its `.ao-base/` snapshot — has its
+  current content copied to `~/.claude/skills/.archive/<name>.pre-sync-<ts>/` before
+  the overwrite, and a passive, dismissible notice names what changed and where the
+  copy went. Settings keeps one button ("Sync skills to this version") for forcing this
+  build's versions on demand; the first-launch install banner still asks before writing
+  anything at all. `/skill-propose` now flags a patch aimed at an app-owned skill as
+  upstream feedback: staged as usual, but reported as something the next sync will
+  overwrite and that belongs in the app's repo if it survives review. 6 new Rust tests
+  (direction guard, backup-on-hand-edit, manual override, bootstrap of a pre-tracking
+  install); `install.sh` mirrors the `.ao-base/` snapshots so the app's hand-edit
+  detection stays accurate after a repo install.
 
 ## [0.11.0-alpha] - 2026-08-31
 

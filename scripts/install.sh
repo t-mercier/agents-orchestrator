@@ -44,6 +44,13 @@ for d in "$SKILLS_SRC"/*/; do
     diff -rq "$d" "$dst" >/dev/null 2>&1 || STALE+=("$name")
   else
     rm -rf "$dst"; cp -R "$d" "$dst"; echo "installed skill: /$name"
+    # Mirror the pristine snapshot the app's installer keeps (src-tauri/src/skills.rs):
+    # the app's launch sync compares each skill against .ao-base/<name> to tell "edited
+    # by hand" (back it up first) from "just stale" (overwrite plainly). A skill this
+    # script wrote without refreshing its base would look hand-edited to the app forever.
+    rm -rf "$SKILLS_DST/.ao-base/$name"
+    mkdir -p "$SKILLS_DST/.ao-base"
+    cp -R "$d" "$SKILLS_DST/.ao-base/$name"
   fi
 done
 

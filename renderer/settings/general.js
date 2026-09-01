@@ -114,54 +114,22 @@
     window.location.reload()
   })
 
-  // ── Session skills: install missing ones + adopt bundle changes that don't clobber a
-  // local /skill-propose patch. Safe by construction — a skill only YOU changed since
-  // the last sync point is never touched, so no confirm gate before acting, only a
-  // results summary after (same as the first-launch banner's non-force install).
+  // ── Session skills: bring the app-owned skills to exactly this build's versions, on
+  // demand. Manual, so it skips the launch sync's direction guard — the user is asking
+  // for THIS build — but the no-silent-loss rule still holds: a skill edited outside the
+  // installers is copied under .archive/ before being overwritten, and named in the
+  // result. No confirm gate; nothing can be destroyed, only moved.
   if ($('set-install-skills')) $('set-install-skills').addEventListener('click', async () => {
-    if (!window.api || !window.api.updateSkills) return
-    const res = await window.api.updateSkills()
+    if (!window.api || !window.api.syncSkills) return
+    const res = await window.api.syncSkills(true)
     if (!res || !res.ok) {
-      if (window.confirmAction) window.confirmAction({ title: 'Skills update failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
+      if (window.confirmAction) window.confirmAction({ title: 'Skills sync failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
       return
     }
-    const bits = [window.CSMSkillsUpdate ? window.CSMSkillsUpdate.updateResultText(res) : 'Done.']
+    const bits = [window.CSMSkillsUpdate ? window.CSMSkillsUpdate.syncResultText(res) : 'Done.']
     if (res.config_seeded) bits.push('Seeded a default config.')
     if ((res.dirs_created || []).length) bits.push(`Created ${res.dirs_created.length} category folder${res.dirs_created.length === 1 ? '' : 's'}.`)
     bits.push('Open a fresh Claude Code session to pick up any changes.')
-    if (window.confirmAction) window.confirmAction({ title: 'Session skills updated', body: bits.join(' '), confirmLabel: 'OK' })
-  })
-
-  // ── Explicit escape hatch: force every bundled skill back to exactly what THIS app
-  // version ships, including ones with your own local changes. The update above never
-  // does this on its own — this is the only path that can, and it always warns by name
-  // first (the same dialog the launch banner's own escape hatch would use, worded by
-  // window.CSMSkillsUpdate against the bundle's build date vs the last full match).
-  if ($('set-reset-skills')) $('set-reset-skills').addEventListener('click', async () => {
-    if (!window.api || !window.api.installSkills) return
-    const status = window.api.skillsStatus ? await window.api.skillsStatus() : null
-    const present = (status && status.present) || []
-    const differs = (status && status.differs) || []
-    if (!present.length) return
-    if (window.confirmAction) {
-      const dialog = window.CSMSkillsUpdate
-        ? window.CSMSkillsUpdate.overwriteDialog(status, present, differs)
-        : {
-            title: 'Overwrite session skills?',
-            body: `This replaces these skills in ~/.claude/skills with the app's bundled versions: ${present.join(', ')}.${differs.length ? ` ${differs.length} of them differ from the bundled version and your changes would be lost: ${differs.join(', ')}.` : ''} Your other skills are not touched.`,
-          }
-      const ok = await window.confirmAction({
-        ...dialog,
-        confirmLabel: `Overwrite ${present.length}`,
-      }).then(c => c === 'confirm')
-      if (!ok) return
-    }
-    const res = await window.api.installSkills(true)
-    if (!res || !res.ok) {
-      if (window.confirmAction) window.confirmAction({ title: 'Reset failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
-      return
-    }
-    const n = (res.installed || []).filter(s => s !== 'lib').length
-    if (window.confirmAction) window.confirmAction({ title: 'Session skills reset', body: `Reset ${n} skill${n === 1 ? '' : 's'} to the bundled version. Open a fresh Claude Code session to pick them up.`, confirmLabel: 'OK' })
+    if (window.confirmAction) window.confirmAction({ title: 'Session skills synced', body: bits.join(' '), confirmLabel: 'OK' })
   })
 })()

@@ -63,7 +63,7 @@ Full tour: **[the guide](docs/GUIDE.md)**.
 > - 🏷 **Tickets carry their tracker's own status word** — `In Review`, `Triaged`, whatever your project calls it. Read through MCP, so the app itself never holds a tracker credential.
 > - ✅ **Close finishes a stale session properly** — it resumes the session headless, writes the summary, attaches the PRs, and moves it to Closed. No terminal opens.
 > - 🧠 **Knowledge notes build themselves** — `/learn` writes the moment something durable comes up, extending the note that already owns the subject; an opt-in hook now catches it the instant your own wording states a preference or correction, not only when you ask.
-> - 🛡 **Skills update without losing what you improved** — a new app build compares each skill against a pristine snapshot of the last version you synced, not just "does it differ": a skill only upstream moved is adopted automatically (a launch banner offers it by name), one only *you* changed via `/skill-propose` is never touched. An explicit "reset to bundled version" link stays available when you really want it back.
+> - 🛡 **The app's skills keep themselves current** — the lifecycle skills are app-owned, synced silently at launch like any app resource. An older build never reverts a newer install, and anything you'd edited by hand is copied to `.archive/` before being replaced — named in a notice, never silently lost.
 >
 > Earlier releases: the [changelog](CHANGELOG.md) has the full history.
 
@@ -210,7 +210,7 @@ This only catches signal carried in your own wording. A fact or gotcha you never
 > git pull && bash scripts/install.sh --force
 > ```
 >
-> `--force` is not the default because it overwrites a skill you may have customised — so the installer names the ones whose updates it withheld, and you decide. Note `npm run install:skills` does **not** force. From the app, **Settings → Session skills → Install / update** does something safer by default: it installs any missing skill and adopts a bundle change, but a skill only *you* moved since the last sync point — a hand edit, or a `/skill-propose` patch — is never touched, so updating the app never costs you an improvement you made along the way. A secondary "Reset a skill you've customised…" link is the explicit escape hatch when you really do want the bundled version back, with its own by-name warning first.
+> `--force` is not the default because it overwrites a skill you may have customised — so the installer names the ones whose updates it withheld, and you decide. Note `npm run install:skills` does **not** force. The app itself needs no button for this: it syncs its own skills silently at launch — an app built before your last `install.sh --force` run stands down rather than revert it, and a skill you'd edited by hand is copied to `~/.claude/skills/.archive/` before being replaced, named in a notice. **Settings → Session skills → Sync skills to this version** forces this build's versions on demand, under the same never-silently-lose rule.
 >
 > **Updating from an earlier version?** Your config **auto-migrates to v2** on first launch — named spaces + per-space knowledge-notes folders, with a `.v1-backup` kept (see [ADR-015](docs/adr/ADR-015-config-v1-to-v2-migration-flag-gated-self-cleaning.md)). Nothing to do by hand.
 

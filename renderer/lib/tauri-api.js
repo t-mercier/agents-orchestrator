@@ -149,23 +149,22 @@
         .catch((e) => ({ ok: false, error: String(e) })),
 
     // ── Session skills installer (src-tauri/src/skills.rs) ──
-    // status: which bundled skills are already in ~/.claude/skills (drives the banner),
-    // plus the 3-way classification against each skill's .ao-base/ snapshot
-    // (upstream_only/local_only/conflicts) that updateSkills() below acts on.
+    // status: which bundled skills are already in ~/.claude/skills (drives the banner).
     skillsStatus: () => invoke('skills_status').catch(() => ({
       installed: true, present: [], missing: [], differs: [], bundle_epoch: 0, installed_epoch: null,
-      upstream_only: [], local_only: [], conflicts: [],
     })),
-    // The safe update: installs missing skills, adopts a skill only the bundle moved on
-    // (upstream_only), and never touches one only the disk moved on (local_only) or
-    // where both sides moved (conflicts) — those come back named, untouched.
-    updateSkills: () =>
-      invoke('update_skills')
+    // Keep the app-owned skills at this build's versions. manual=false (launch):
+    // direction-guarded — stands down if the tree already matches a bundle at least as
+    // recent, so an older binary never reverts a fresher install.sh run. manual=true
+    // (Settings): this build's versions on demand. Either way, a skill edited outside
+    // the installers is copied under .archive/ before being overwritten — reported in
+    // `backed_up`, never silently destroyed.
+    syncSkills: (manual) =>
+      invoke('sync_skills', { manual: !!manual })
         .then((r) => ({ ok: true, ...(r || {}) }))
         .catch((e) => ({ ok: false, error: String(e) })),
-    // The explicit escape hatch: force EVERY bundled skill to exactly what this app
-    // ships, including ones with local changes. Settings' own confirm dialog is the
-    // only place this is still called from — never automatically.
+    // First-contact install only (the launch banner's button): writes missing skills,
+    // never touches an existing one. The user opts in here; sync takes over afterwards.
     installSkills: (force) =>
       invoke('install_skills', { force: !!force })
         .then((r) => ({ ok: true, ...(r || {}) }))

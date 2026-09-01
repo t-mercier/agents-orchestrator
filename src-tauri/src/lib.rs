@@ -1421,7 +1421,7 @@ pub fn run() {
             get_usage,
             skills::install_skills,
             skills::skills_status,
-            skills::update_skills,
+            skills::sync_skills,
             pty::pty_spawn,
             pty::pty_input,
             pty::pty_resize,

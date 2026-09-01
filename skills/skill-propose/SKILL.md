@@ -106,6 +106,24 @@ Three outcomes, in order of preference:
    cluster worse; consolidating a cluster is a curation job, not a proposal job.
 3. **No class exists — this is genuinely its own territory** → propose a new skill (Step 3a).
 
+### App-owned skills: the patch is product feedback
+
+Before staging a patch, check whether the target is one of the app's own lifecycle
+skills:
+
+```bash
+[ -d ~/.claude/skills/.ao-base/<target-slug> ] && echo "app-owned"
+```
+
+An app-owned skill is a product primitive — the app's sync overwrites it at every
+update, the way any app refreshes File > Save (a copy of local changes goes to
+`.archive/`, but the live skill reverts). So a patch to one is really a statement that
+**the product's default is wrong or incomplete**, and it belongs upstream, not in a
+local fork that resets on every update. Still stage the patch — the local benefit is
+real until the next update — but say both things plainly in your report: that it will
+be overwritten by the next app sync, and that if it survives review it should be
+contributed to the app's own repo (or filed as an issue there) to become permanent.
+
 ### The name is a tell
 
 If the natural name contains a ticket number, a feature codename, a specific error string,

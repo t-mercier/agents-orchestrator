@@ -1249,47 +1249,39 @@ async function maybeShowSkillsBanner() {
     })
     return
   }
-  maybeShowSkillsUpdateBanner(el, status)
+  syncSkillsOnLaunch(el)
 }
 
-// Skills are present and at least one has moved upstream since the last confirmed sync
-// point, with nothing local standing in the way (skills_status()'s `upstream_only`,
-// computed against the .ao-base/ snapshot in src-tauri/src/skills.rs). Nudge toward the
-// same safe update Settings offers, instead of making the user go find it — safe by
-// construction, so unlike the old force-overwrite banner this applies directly, no
-// confirm gate: a skill you customised via /skill-propose is never in `upstream_only`
-// to begin with, it would show up in `local_only` or `conflicts` instead, untouched.
-// Dismissal is keyed by bundle_epoch, not a flat flag: declining today's update must not
-// suppress a later one shipped in a future build.
-function maybeShowSkillsUpdateBanner(el, status) {
-  const upstreamOnly = status.upstream_only || []
-  if (!upstreamOnly.length) return
-  const dismissKey = 'csm.skillsUpdateDismissedEpoch'
-  const bundleEpoch = typeof status.bundle_epoch === 'number' ? status.bundle_epoch : 0
-  if (localStorage.getItem(dismissKey) === String(bundleEpoch)) return
-  const n = upstreamOnly.length
+// Skills are installed → keep them at this build's versions, silently, the way an app
+// maintains its own resources — nobody is asked whether File > Save may update. Safe by
+// construction on both sides (src-tauri/src/skills.rs sync_into): the direction guard
+// stands the sync down when the on-disk tree is already at or past this bundle's date
+// (the developer case — install.sh ran after this app was built), and a skill edited
+// outside the installers is copied under .archive/ before being overwritten. So no
+// permission dialog — but visibility instead of silence: a passive, dismissible notice
+// says what changed and where any edited copy went. Nothing shows when nothing changed,
+// which is every launch but the first after an app update.
+async function syncSkillsOnLaunch(el) {
+  if (!window.api.syncSkills) return
+  let res
+  try { res = await window.api.syncSkills(false) } catch { return }
+  if (!res || !res.ok || res.skipped_ahead) return
+  const updated = res.updated || []
+  const installed = (res.installed || []).filter(s => s !== 'lib')
+  const backedUp = res.backed_up || []
+  if (!updated.length && !installed.length) return
+  const bits = []
+  if (updated.length) bits.push(`updated to this app version: ${updated.join(', ')}`)
+  if (installed.length) bits.push(`newly installed: ${installed.join(', ')}`)
+  let note = `Session skills ${bits.join('; ')}.`
+  if (backedUp.length) {
+    note += ` Your edited cop${backedUp.length === 1 ? 'y' : 'ies'} of ${backedUp.map(b => b.name).join(', ')} ${backedUp.length === 1 ? 'was' : 'were'} kept in ~/.claude/skills/.archive/.`
+  }
   el.innerHTML =
-    `<span class="sb-text">${n} session skill${n === 1 ? '' : 's'} can be updated from upstream: ${upstreamOnly.join(', ')}.</span>` +
-    '<button type="button" class="sb-install">Update skills</button>' +
+    `<span class="sb-text">${note} Open a fresh Claude Code session to pick them up.</span>` +
     '<button type="button" class="sb-dismiss" aria-label="Dismiss">×</button>'
   el.hidden = false
-  const update = el.querySelector('.sb-install')
-  update.addEventListener('click', async () => {
-    update.disabled = true; update.textContent = 'Updating…'
-    const res = window.api.updateSkills ? await window.api.updateSkills() : { ok: false, error: 'updateSkills unavailable' }
-    if (res && res.ok) {
-      el.hidden = true; el.innerHTML = ''
-      if (window.confirmAction) {
-        const body = window.CSMSkillsUpdate ? window.CSMSkillsUpdate.updateResultText(res) : 'Done.'
-        window.confirmAction({ title: 'Session skills updated', body: `${body} Open a fresh Claude Code session to pick them up.`, confirmLabel: 'OK' })
-      }
-    } else {
-      update.disabled = false; update.textContent = 'Update skills'
-      if (window.confirmAction) window.confirmAction({ title: 'Update failed', body: (res && res.error) || 'unknown error', confirmLabel: 'OK' })
-    }
-  })
   el.querySelector('.sb-dismiss').addEventListener('click', () => {
-    localStorage.setItem(dismissKey, String(bundleEpoch))
     el.hidden = true; el.innerHTML = ''
   })
 }
@@ -1445,7 +1437,7 @@ async function boot() {
   populateNewSessionCategories()              // fill the +New dropdown (from config)
   fetchAndRender(true)                        // initial → sort
   seedTabCounts()                             // fill ALL tab badges at launch (not just on visit)
-  maybeShowSkillsBanner()                     // first-launch nudge if skills aren't installed yet
+  maybeShowSkillsBanner()                     // first-launch install nudge, then silent per-launch sync
   refreshUsage()                              // initial usage bar render
   renderUnmanagedSection()                    // initial: header present (collapsed), no discovery yet
   window.CSMDragList.init({
