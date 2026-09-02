@@ -38,6 +38,33 @@ pub fn parse_pr_url(url: &str) -> Option<(String, String)> {
     Some((format!("{owner}/{repo}"), number))
 }
 
+/// Fold one PR's fresh lookup into its cache entry.
+///
+/// `gh` is the parsed `gh pr view` output, or `None` when the lookup failed (a network
+/// blip, a throttle, the wrong `gh` account active for a private repo). The rule that
+/// matters is what happens on failure: a real `merged`/`open`/`closed` we already knew
+/// must NOT be clobbered to `unknown` — that is how a correctly-synced PR suddenly reads
+/// as un-synced after a Sync that happened to fail for it. On failure the previous state
+/// and its `checkedAt` are kept untouched; only a lookup that actually answered advances
+/// them. The title already followed this rule; the state now does too.
+pub fn merge_pr_entry(previous: Option<&Value>, gh: Option<&Value>, now: &str) -> Value {
+    let prev_str = |k: &str| previous.and_then(|e| e.get(k)).and_then(Value::as_str).map(String::from);
+    let (state, checked_at) = match gh {
+        Some(v) => (state_of(v).to_string(), now.to_string()),
+        None => (
+            prev_str("state").unwrap_or_else(|| "unknown".into()),
+            prev_str("checkedAt").unwrap_or_default(),
+        ),
+    };
+    let title = gh
+        .and_then(|v| v.get("title"))
+        .and_then(Value::as_str)
+        .map(String::from)
+        .or_else(|| prev_str("title"))
+        .unwrap_or_default();
+    json!({ "state": state, "title": title, "checkedAt": checked_at })
+}
+
 /// `gh`'s two fields folded into the one word the UI shows. `state` stays OPEN while a
 /// PR is a draft, so `isDraft` — not `state` — is what separates those two.
 pub fn state_of(gh: &Value) -> &'static str {
@@ -132,20 +159,8 @@ pub fn sync_pr_status(urls: Vec<String>) -> Result<Value, String> {
             crate::pty::shell_quote(&repo),
         );
         let gh = run(&inner).ok().and_then(|out| serde_json::from_str::<Value>(&out).ok());
-        let state = gh.as_ref().map(state_of).unwrap_or("unknown");
-        // The title rides along in the same call — a PR number alone says nothing about
-        // what the PR is. Kept from the previous sync when this one failed, since a
-        // title does not go stale the way a state does.
-        let title = gh
-            .as_ref()
-            .and_then(|v| v.get("title"))
-            .and_then(Value::as_str)
-            .map(String::from)
-            .or_else(|| {
-                cache.get(&url).and_then(|e| e.get("title")).and_then(Value::as_str).map(String::from)
-            })
-            .unwrap_or_default();
-        cache.insert(url, json!({ "state": state, "title": title, "checkedAt": now }));
+        let entry = merge_pr_entry(cache.get(&url), gh.as_ref(), &now);
+        cache.insert(url, entry);
     }
     let body = Value::Object(cache);
     // Best-effort: a cache we could not persist still gets returned, so this Sync works
@@ -214,6 +229,48 @@ mod tests {
     #[test]
     fn draft_wins_over_state() {
         assert_eq!(state_of(&json!({"state": "CLOSED", "isDraft": true})), "draft");
+    }
+
+    #[test]
+    fn a_successful_lookup_writes_the_fresh_state_title_and_time() {
+        let prev = json!({"state": "open", "title": "old", "checkedAt": "yesterday"});
+        let gh = json!({"state": "MERGED", "isDraft": false, "title": "new"});
+        let out = merge_pr_entry(Some(&prev), Some(&gh), "today");
+        assert_eq!(out["state"], "merged");
+        assert_eq!(out["title"], "new");
+        assert_eq!(out["checkedAt"], "today");
+    }
+
+    #[test]
+    fn a_failed_lookup_keeps_the_known_state_and_its_timestamp() {
+        // The bug this fixes: a merged PR whose lookup failed this Sync must not become
+        // `unknown` and read as un-synced. State, title AND checkedAt all stay put —
+        // nothing was actually re-checked, so the timestamp must not claim otherwise.
+        let prev = json!({"state": "merged", "title": "the PR", "checkedAt": "yesterday"});
+        let out = merge_pr_entry(Some(&prev), None, "today");
+        assert_eq!(out["state"], "merged", "a known state is never clobbered to unknown");
+        assert_eq!(out["title"], "the PR");
+        assert_eq!(out["checkedAt"], "yesterday", "a failed lookup does not advance the time");
+    }
+
+    #[test]
+    fn a_failed_lookup_on_a_brand_new_pr_is_honestly_unknown() {
+        // No previous entry and the lookup failed → unknown is the truthful answer, and
+        // the timestamp is empty since nothing was ever successfully checked.
+        let out = merge_pr_entry(None, None, "today");
+        assert_eq!(out["state"], "unknown");
+        assert_eq!(out["title"], "");
+        assert_eq!(out["checkedAt"], "");
+    }
+
+    #[test]
+    fn a_failed_lookup_reuses_the_cached_title_even_with_no_prior_state() {
+        // A half-populated entry (title known, state somehow absent) still yields the
+        // title back rather than dropping it.
+        let prev = json!({"title": "known title"});
+        let out = merge_pr_entry(Some(&prev), None, "today");
+        assert_eq!(out["title"], "known title");
+        assert_eq!(out["state"], "unknown");
     }
 }
 
