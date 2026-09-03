@@ -10,6 +10,19 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.2-alpha] - 2026-09-03
+
+### Fixed
+- **A failed PR lookup no longer wipes the state Sync already knew** — `sync_pr_status`
+  overwrote each PR's cached entry unconditionally, so a single `gh pr view` that failed
+  (a network blip, a throttle, the wrong `gh` account active for a private repo) replaced
+  a real `merged`/`open`/`closed` with `unknown`. That is exactly how a correctly-synced
+  PR reads as un-synced — a dashed glyph, close to draft — right after a Sync that
+  happened to fail for it. On failure the previous state and its timestamp are now kept
+  untouched (nothing was re-checked, so the time must not claim otherwise), the same
+  fallback the title already used; `unknown` is written only for a PR with no prior entry
+  at all. 4 new tests.
+
 ## [0.11.1-alpha] - 2026-09-01
 
 ### Changed
