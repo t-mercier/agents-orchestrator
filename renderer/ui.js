@@ -1228,9 +1228,6 @@ function renderAll(sessions, selectedKey, tab = 'running', resort = false) {
   // refresh, initial load). On the 5s poll, resort=false keeps the order frozen.
   if (resort || sortRank.size === 0) rebuildSortRank(sessions)
   const changedKeys = computeChangedKeys(sessions)   // keys whose activity advanced → flash
-  renderPanelList(sessions, selectedKey, changedKeys)
-  updateTabBadges()   // refresh the per-tab counts
-  let selected = sessions.find(s => sessionKey(s) === selectedKey) || null
   // While an embedded terminal is open, keep its session's detail panel alive even
   // if that session left the current tab's list — resuming a Closed session moves
   // it to Running, so it vanishes from the Closed list for a poll or two. Falling
@@ -1242,7 +1239,8 @@ function renderAll(sessions, selectedKey, tab = 'running', resort = false) {
   // opened — re-resolve it from the freshly-fetched list every render so its
   // status dot (busy/waiting/idle) tracks the 5s poll instead of freezing on the
   // value it had at open time. Keyed by sessionKey, with a sessionId fallback
-  // (a `--resume`d session keeps its id but runs under a new pid).
+  // (a `--resume`d session keeps its id but runs under a new pid). Resolved BEFORE
+  // the list renders, so the highlight below can use the fresh key.
   if (window._terminalSession) {
     const pool = window._lastSessions || sessions
     const tKey = sessionKey(window._terminalSession)
@@ -1251,6 +1249,16 @@ function renderAll(sessions, selectedKey, tab = 'running', resort = false) {
                   (tSid ? pool.find(s => s.sessionId === tSid) : null)
     if (fresh) window._terminalSession = fresh
   }
+  // The card highlighted in the LIST must be the same session shown in the DETAIL
+  // panel. When nothing is explicitly selected but a terminal is open, both follow
+  // the session whose terminal you are looking at — otherwise you sit inside a
+  // session with no card marked as the one you are in, unable to find it in the list
+  // (the detail panel already fell back this way; the list did not, so they diverged).
+  const highlightKey = selectedKey ||
+    (termOpen && window._terminalSession ? sessionKey(window._terminalSession) : null)
+  renderPanelList(sessions, highlightKey, changedKeys)
+  updateTabBadges()   // refresh the per-tab counts
+  let selected = sessions.find(s => sessionKey(s) === highlightKey) || null
   if (!selected && termOpen && window._terminalSession) selected = window._terminalSession
   renderDetailPanel(selected, tab)
   // The detail panel is INLINE in the list view — the only slide-over drawer left is
