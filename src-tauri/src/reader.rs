@@ -23,7 +23,7 @@ use crate::{is_safe_slug, is_valid_session_id};
 
 /// Mirror of isProcessAlive: alive if kill(pid,0) succeeds, or EPERM (exists but
 /// we can't signal it).
-fn alive(pid: i64) -> bool {
+pub(crate) fn alive(pid: i64) -> bool {
     // The pid comes from a sessions/*.json written by another process — clamp it to
     // pid_t's range before the cast. An oversized value would wrap negative, and
     // kill(-pgid, 0) queries a whole PROCESS GROUP: a dead session could then read
@@ -73,7 +73,7 @@ struct Transcript {
 /// absent or unparseable — every consumer treats the registry as best-effort. The one
 /// place the file is read+parsed (it was inlined four times, incl. once per notes.md
 /// inside the poll scan).
-fn load_active_sessions() -> Value {
+pub(crate) fn load_active_sessions() -> Value {
     fs::read_to_string(home().join(".claude").join("active-sessions.json"))
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
@@ -832,7 +832,7 @@ fn notes_records_session(content: &str, sid: &str) -> bool {
 
 /// A real Claude session id (UUID-ish: hex + hyphens, ≥32 chars). Filters out
 /// `/start-session` placeholders like `to fill (open the parallel session, …)`.
-fn is_resumable_sid(s: &str) -> bool {
+pub(crate) fn is_resumable_sid(s: &str) -> bool {
     s.len() >= 32 && s.contains('-') && s.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-')
 }
 
@@ -867,7 +867,7 @@ where
 /// most-recently-active session id registered to it in `active` (the parsed
 /// active-sessions.json — the caller loads it ONCE per scan, not once per notes.md)
 /// whose transcript still exists — so the dashboard can offer Resume, not only Restart.
-fn latest_resumable_sid(notes_path: &str, active: &Value) -> Option<String> {
+pub(crate) fn latest_resumable_sid(notes_path: &str, active: &Value) -> Option<String> {
     let mut best: Option<(String, SystemTime)> = None;
     for (sid, e) in active.as_object()? {
         if e.get("notes_path").and_then(Value::as_str) != Some(notes_path) || !is_resumable_sid(sid) {
@@ -883,6 +883,13 @@ fn latest_resumable_sid(notes_path: &str, active: &Value) -> Option<String> {
         }
     }
     best.map(|(sid, _)| sid)
+}
+
+
+/// Does this session id still have a conversation on disk? The one bit Doctor needs
+/// from a transcript, so it does not pull the whole cached record for a yes/no.
+pub(crate) fn has_transcript(sid: &str) -> bool {
+    read_transcript(sid).found
 }
 
 /// For live session ids with no active-sessions.json entry, find the managed notes.md
@@ -936,7 +943,7 @@ fn recover_unregistered(cfg: &Value, want: &HashSet<String>) -> HashMap<String, 
 
 /// The raw text between the leading `---\n` and its closing `\n---`. None when the
 /// content has no complete frontmatter block. Shared by the scalar + list parsers.
-fn frontmatter_block(content: &str) -> Option<&str> {
+pub(crate) fn frontmatter_block(content: &str) -> Option<&str> {
     let stripped = content.strip_prefix("---\n")?;
     let end = stripped.find("\n---")?;
     Some(&stripped[..end])
@@ -947,7 +954,7 @@ fn frontmatter_block(content: &str) -> Option<&str> {
 /// Block-list item lines (`  - value`) are skipped — they belong to the list key
 /// above them (see frontmatter_values), and a URL item would otherwise split on its
 /// `https:` colon into a junk `- https` key.
-fn parse_frontmatter(content: &str) -> HashMap<String, String> {
+pub(crate) fn parse_frontmatter(content: &str) -> HashMap<String, String> {
     let mut out = HashMap::new();
     if let Some(stripped) = content.strip_prefix("---\n") {
         if let Some(end) = stripped.find("\n---") {

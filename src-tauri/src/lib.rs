@@ -6,6 +6,7 @@ mod terminal;
 mod skills;
 mod statusline;
 mod prstatus;
+mod doctor;
 
 use tauri::{Manager, Emitter};
 use serde_json::Value;
@@ -758,7 +759,7 @@ fn is_deletable_session_dir(dir: &std::path::Path, roots: &[std::path::PathBuf])
 /// (archive + pr_link) so the confinement rule lives once. Checks EVERY configured
 /// root — the v2 `roots` list plus the legacy workRoot/personalRoot — so a session
 /// under a custom root isn't wrongly rejected.
-fn notes_md_under_root(notes_path: &str) -> Result<std::path::PathBuf, String> {
+pub(crate) fn notes_md_under_root(notes_path: &str) -> Result<std::path::PathBuf, String> {
     if notes_path.starts_with('-') {
         return Err("invalid path".into());
     }
@@ -861,7 +862,7 @@ fn set_frontmatter_links(content: &str, singular: &str, plural: &str, values: &[
 /// (creating the section if absent). Pure + unit-tested — mirrors what /archive-session
 /// writes. The dashboard classifies a session as Archived from any history line
 /// containing "ARCHIVED" (reader.rs::session_history_info).
-fn stamp_archived(content: &str, line: &str) -> String {
+pub(crate) fn stamp_archived(content: &str, line: &str) -> String {
     const MARKER: &str = "## Session history";
     match content.find(MARKER) {
         Some(hpos) => {
@@ -902,12 +903,30 @@ fn remove_from_active_sessions(notes_path: &str, abs: &std::path::Path) -> Resul
     Ok(())
 }
 
+/// Drop registry entries pointing at `notes_path`, matching the stored string only.
+///
+/// `remove_from_active_sessions` canonicalizes first, which cannot work for the one case
+/// this exists for: Doctor dropping an entry whose notes.md is gone. Matching the raw
+/// string is safe here because the string came out of the registry itself.
+pub(crate) fn remove_registry_entries_for(notes_path: &str) -> Result<(), String> {
+    let active = config::home().join(".claude").join("active-sessions.json");
+    let Ok(s) = std::fs::read_to_string(&active) else { return Ok(()) };
+    let Ok(serde_json::Value::Object(mut map)) = serde_json::from_str(&s) else { return Ok(()) };
+    let before = map.len();
+    map.retain(|_, v| v.get("notes_path").and_then(serde_json::Value::as_str) != Some(notes_path));
+    if map.len() == before {
+        return Ok(());
+    }
+    let body = serde_json::to_string_pretty(&serde_json::Value::Object(map)).map_err(|e| e.to_string())?;
+    atomic_write(&active, &body)
+}
+
 /// Drop every genuine ARCHIVED marker line from the notes. A marker is a pipe-delimited
 /// entry whose own field is exactly `ARCHIVED` (what stamp_archived writes) — prose that
 /// merely mentions the word is preserved, matching reader.rs::session_history_info. Pure +
 /// unit-tested; idempotent, so it's safe to run on every resume. Mirrors the un-archive
 /// step of the /restart-session skill.
-fn strip_archived(content: &str) -> String {
+pub(crate) fn strip_archived(content: &str) -> String {
     let kept: Vec<&str> = content
         .lines()
         .filter(|l| {
@@ -1415,6 +1434,8 @@ pub fn run() {
             wrap_session,
             prstatus::get_pr_status,
             prstatus::sync_pr_status,
+            doctor::doctor_scan,
+            doctor::doctor_repair,
             prstatus::sync_refs,
             can_reveal_terminal,
             reveal_terminal,

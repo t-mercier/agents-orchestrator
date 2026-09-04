@@ -165,7 +165,24 @@ pub struct SkillsStatus {
 }
 
 /// The slash-command skill names the bundle carries (excludes the shared `lib`).
+/// Installed skills that no longer match their `.ao-base` snapshot — someone edited them
+/// by hand since the last install. Reported by Doctor, never acted on there: the sync
+/// path already archives a hand-edit before overwriting it, and that is the only place
+/// allowed to touch one.
+pub fn drifted_skills() -> Vec<String> {
+    let dst = config::home().join(".claude").join("skills");
+    let mut out: Vec<String> = SKILLS
+        .dirs()
+        .filter_map(|d| d.path().file_name().map(|n| n.to_string_lossy().into_owned()))
+        .filter(|n| n != SHARED_LIB)
+        .filter(|n| dst.join(n).exists() && hand_edited(&dst.join(BASE_DIR).join(n), &dst.join(n)))
+        .collect();
+    out.sort();
+    out
+}
+
 #[cfg(test)]
+
 fn skill_names() -> Vec<String> {
     let mut names: Vec<String> = SKILLS
         .dirs()
