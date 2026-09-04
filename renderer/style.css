@@ -1777,7 +1777,13 @@ button.ticket-tag:hover { color: var(--accent); background: rgba(var(--accent-rg
   left: 0;
   right: 0;
   height: 26px;
-  background: var(--surface-bg);
+  /* --surface-bg was never defined anywhere, so this resolved to nothing and the bar
+     painted no background at all. Normally that would show the page behind it; here the
+     webview is deliberately non-opaque (macOSPrivateApi, the fix for the white flash on
+     resize), so it showed the desktop — and the terminal underneath read as overlapping
+     text. --surface-modal is the defined token for chrome that sits over content, and at
+     0.98 alpha it is opaque enough to cover it. */
+  background: var(--surface-modal);
   border-top: 0.5px solid var(--card-border);
   display: flex;
   align-items: center;

@@ -10,6 +10,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **The usage bar painted no background.** It asked for `--surface-bg`, a custom property
+  that was never defined anywhere in the stylesheet, so the declaration resolved to nothing.
+  On most pages that would show whatever sits behind; this webview is deliberately
+  non-opaque (the fix for the white flash on resize), so the bar showed straight through to
+  the desktop and the terminal beneath it read as overlapping text. It now uses
+  `--surface-modal`, the defined token for chrome that sits over content.
+
 ## [0.11.3-alpha] - 2026-09-04
 
 ### Fixed
