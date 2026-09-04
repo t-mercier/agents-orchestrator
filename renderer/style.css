@@ -1933,3 +1933,26 @@ body.dl-drag-active .list-card { pointer-events: none; }
 .list-group-x { background: none; border: none; color: rgba(var(--tint), 0.42); cursor: pointer; font-size: 12px; }
 .list-group-x:hover { color: rgba(var(--tint), 0.85); }
 .list-group-body.collapsed { display: none; }
+
+/* ── Doctor panel ──
+   A scrollable findings list inside the dialog: the store can hold hundreds of
+   sessions, and the panel must stay the same size whether it reports one finding or
+   twenty. Informational rows are indented to where the checkboxes are so the column
+   reads straight even though they carry no control. */
+#doctor-modal .modal-form { width: min(620px, 86vw); }
+.doctor-list { display: flex; flex-direction: column; gap: 2px; max-height: 46vh; overflow-y: auto; }
+.doctor-group { font-size: 11px; color: var(--text-tertiary); margin: 10px 0 2px; }
+.doctor-group:first-child { margin-top: 0; }
+.doctor-group em { font-style: normal; opacity: 0.75; }
+.doctor-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 8px 10px; border-radius: 6px;
+  background: rgba(var(--tint), 0.05);
+  cursor: pointer;
+}
+.doctor-row:hover { background: rgba(var(--accent-rgb), 0.1); }
+.doctor-row input[type="checkbox"] { margin-top: 2px; flex: none; }
+.doctor-row-inert { cursor: default; padding-left: 32px; background: none; }
+.doctor-row-inert:hover { background: none; }
+.doctor-title { font-size: 12px; }
+.doctor-detail { font-size: 11px; color: var(--text-tertiary); line-height: 1.5; margin-top: 2px; word-break: break-word; }

@@ -114,6 +114,11 @@
     window.location.reload()
   })
 
+  // ── Doctor: the scan runs in its own panel; Settings only opens it. ──
+  if ($('set-doctor')) $('set-doctor').addEventListener('click', () => {
+    if (window.openDoctor) window.openDoctor()
+  })
+
   // ── Session skills: bring the app-owned skills to exactly this build's versions, on
   // demand. Manual, so it skips the launch sync's direction guard — the user is asking
   // for THIS build — but the no-silent-loss rule still holds: a skill edited outside the

@@ -163,6 +163,16 @@
       invoke('sync_skills', { manual: !!manual })
         .then((r) => ({ ok: true, ...(r || {}) }))
         .catch((e) => ({ ok: false, error: String(e) })),
+    // ── Doctor (src-tauri/src/doctor.rs) ──
+    // The scan is read-only; the repair applies only the finding ids handed to it. Kept
+    // as two calls on purpose — nothing the scan reports is acted on without a round
+    // trip through the user.
+    doctorScan: () => invoke('doctor_scan'),
+    doctorRepair: (ids) =>
+      invoke('doctor_repair', { ids })
+        .then((r) => r || { fixed: [], failed: [] })
+        .catch((e) => ({ fixed: [], failed: [{ id: 'doctor', error: String(e) }] })),
+
     // First-contact install only (the launch banner's button): writes missing skills,
     // never touches an existing one. The user opts in here; sync takes over afterwards.
     installSkills: (force) =>

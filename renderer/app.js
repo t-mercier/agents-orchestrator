@@ -1508,6 +1508,11 @@ async function boot() {
     refreshUsage()                            // refresh usage bar on every poll
   }, POLL_INTERVAL)
 }
+// Exposed so Doctor can pull the list back in step right after a repair — un-archiving
+// a session moves it between tabs, and waiting out the poll shows a list that disagrees
+// with the panel that just changed it.
+window.fetchAndRender = fetchAndRender
+
 window.reloadConfig = async () => {           // called by Settings after save
   window.CSM_CONFIG = await window.api.getConfig()
   if (window.applyCategoryColors) window.applyCategoryColors(window.CSM_CONFIG.colorMap)

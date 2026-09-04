@@ -219,6 +219,14 @@
             </div>
             <div class="settings-section">
               <div class="modal-field">
+                <span>Doctor <em>— checks the session registry, the notes files and the running processes, and lists what it can repair; nothing is changed until you pick it</em></span>
+                <div class="path-row">
+                  <button type="button" class="modal-btn" id="set-doctor">Check the session store…</button>
+                </div>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="modal-field">
                 <span>Session skills <em>— brings the app's own <code>/start-session</code>… skills in <code>~/.claude/skills</code> to this version; a copy of anything you'd edited is kept in <code>.archive/</code> first</em></span>
                 <div class="path-row">
                   <button type="button" class="modal-btn" id="set-install-skills">Sync skills to this version</button>
@@ -441,6 +449,22 @@
     </div>
   </dialog>
 
+  <!-- Doctor: a read-only scan, then the repairs the user ticks. Findings arrive
+       already sorted (broken → untidy → info); the informational ones carry no
+       checkbox because there is nothing to apply. -->
+  <dialog id="doctor-modal" class="modal">
+    <div class="modal-form">
+      <h2 class="modal-title">Doctor</h2>
+      <p class="modal-hint" id="doctor-summary">Scanning…</p>
+      <div class="doctor-list" id="doctor-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn" id="doctor-close">Close</button>
+        <button type="button" class="modal-btn" id="doctor-rescan">Scan again</button>
+        <button type="button" class="modal-btn primary" id="doctor-repair" disabled>Repair selected</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="layout">
     <!-- ── List view: sidebar + detail ── -->
     <div class="panel-left" id="panel-left">
@@ -523,5 +547,6 @@
   <script src="settings/board.js"></script>
   <script src="settings/categories.js"></script>
   <script src="settings/integrations.js"></script>
+  <script src="doctor.js"></script>
 </body>
 </html>
