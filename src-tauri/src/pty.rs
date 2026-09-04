@@ -28,6 +28,21 @@ impl PtyManager {
         Self::default()
     }
 
+    /// Reap the embedded children that have already exited.
+    ///
+    /// A pty child that ends on its own — the user typed `exit`, claude quit, something
+    /// killed it from outside — stays in the process table as `<defunct>` until someone
+    /// waits on it, and the app only did that on exit, on close, or on the next attach to
+    /// that same terminal. In between, `kill(pid, 0)` still succeeds on the zombie, so
+    /// the session read as running with no terminal behind it and Resume answered "this
+    /// session is already active" — for a process that was already dead. Called from the
+    /// poll, so the window lasts one tick instead of until the app restarts.
+    pub fn reap_exited(&self) {
+        if let Ok(mut sessions) = self.sessions.lock() {
+            sessions.retain(|_, s| !matches!(s.child.try_wait(), Ok(Some(_))));
+        }
+    }
+
     /// Kill every embedded child. Called on app exit so the `claude` processes we
     /// spawned in embedded terminals don't orphan and keep the session "running"
     /// (with no terminal) after the app reopens — they die with the app, then show

@@ -657,7 +657,11 @@ fn link_fields(values: Vec<String>) -> (Value, Value) {
 }
 
 #[tauri::command(async)]
-pub fn get_sessions() -> Vec<Value> {
+pub fn get_sessions(pty: tauri::State<crate::pty::PtyManager>) -> Vec<Value> {
+    // Reap first: an embedded child that exited since the last poll is still a zombie
+    // until waited on, and a zombie answers `kill(pid, 0)` — it would be listed as a
+    // running session with no terminal behind it.
+    pty.reap_exited();
     let claude = home().join(".claude");
     let cfg = crate::config::load();
     let active = load_active_sessions();

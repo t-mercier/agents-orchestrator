@@ -10,6 +10,16 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- **A session whose terminal process died no longer reads as running for ever.** An
+  embedded `claude` that ended on its own — the user typed `exit`, it crashed, something
+  killed it from outside — stayed in the process table as `<defunct>` until the app waited
+  on it, and the app only did that on exit, on close, or on the next attach to that same
+  terminal. `kill(pid, 0)` succeeds on a zombie, so in between the session showed as
+  running with no terminal behind it and Resume answered *"this session is already
+  active"* about a process that was already dead. The poll now reaps exited children, so
+  that window lasts one tick instead of until the next app restart.
+
 ### Added
 - **Doctor — find what is broken in the session store, and repair what you pick.** Settings →
   General runs a read-only scan and lists named findings; nothing is written until you tick
