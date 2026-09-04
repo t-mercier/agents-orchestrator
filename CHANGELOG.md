@@ -21,6 +21,14 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
   that window lasts one tick instead of until the next app restart.
 
 ### Added
+- **Clean — review old sessions by age and act on the ones you pick.** Settings → General
+  audits every closed, stale and archived session and proposes what to archive (default:
+  no activity for 30 days) and what to delete (default: archived for 90 days). Nothing is
+  pre-ticked and nothing is swept automatically; archiving stays reversible from the
+  Archived tab, and a deletion moves the session folder to the Trash. Age is the same fold
+  the list's age pill already shows — the more recent of the notes.md mtime and the
+  transcript's last message — so the audit never disagrees with the date on screen. A
+  session Clean cannot date at all is counted and left out rather than guessed at.
 - **Doctor — find what is broken in the session store, and repair what you pick.** Settings →
   General runs a read-only scan and lists named findings; nothing is written until you tick
   one. Five checks: a registry entry whose `notes.md` is gone; a frontmatter `session_id`

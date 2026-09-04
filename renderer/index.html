@@ -227,6 +227,14 @@
             </div>
             <div class="settings-section">
               <div class="modal-field">
+                <span>Clean <em>— reviews every closed and archived session by age, and proposes what to archive or delete; you pick, it never sweeps on its own</em></span>
+                <div class="path-row">
+                  <button type="button" class="modal-btn" id="set-clean">Review old sessions…</button>
+                </div>
+              </div>
+            </div>
+            <div class="settings-section">
+              <div class="modal-field">
                 <span>Session skills <em>— brings the app's own <code>/start-session</code>… skills in <code>~/.claude/skills</code> to this version; a copy of anything you'd edited is kept in <code>.archive/</code> first</em></span>
                 <div class="path-row">
                   <button type="button" class="modal-btn" id="set-install-skills">Sync skills to this version</button>
@@ -465,6 +473,39 @@
     </div>
   </dialog>
 
+  <!-- Clean: an age audit, then the archives and deletions the user ticks. The two
+       thresholds re-run the audit as they change, so the proposal is always the one the
+       numbers on screen describe. -->
+  <dialog id="clean-modal" class="modal">
+    <div class="modal-form">
+      <h2 class="modal-title">Clean up old sessions</h2>
+      <div class="clean-thresholds">
+        <label>Archive after
+          <select id="clean-archive-after">
+            <option value="30" selected>30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
+          without activity
+        </label>
+        <label>Delete after
+          <select id="clean-delete-after">
+            <option value="90" selected>90 days</option>
+            <option value="180">180 days</option>
+            <option value="365">1 year</option>
+          </select>
+          archived
+        </label>
+      </div>
+      <p class="modal-hint" id="clean-summary">Auditing…</p>
+      <div class="doctor-list" id="clean-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn" id="clean-close">Close</button>
+        <button type="button" class="modal-btn primary" id="clean-apply" disabled>Apply selected</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="layout">
     <!-- ── List view: sidebar + detail ── -->
     <div class="panel-left" id="panel-left">
@@ -547,6 +588,8 @@
   <script src="settings/board.js"></script>
   <script src="settings/categories.js"></script>
   <script src="settings/integrations.js"></script>
+  <script src="lib/clean-model.js"></script>
   <script src="doctor.js"></script>
+  <script src="clean.js"></script>
 </body>
 </html>

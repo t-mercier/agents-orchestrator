@@ -110,6 +110,6 @@
     // A repair changes what the sidebar should show — un-archiving moves a session
     // between tabs. Ask for a fetch now rather than leaving the user looking at a list
     // that disagrees with the panel until the next poll.
-    if (fixed && window.fetchAndRender) window.fetchAndRender(false)
+    if (fixed && window.refreshSessions) window.refreshSessions()
   })
 })()

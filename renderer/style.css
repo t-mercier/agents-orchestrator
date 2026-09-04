@@ -1956,3 +1956,8 @@ body.dl-drag-active .list-card { pointer-events: none; }
 .doctor-row-inert:hover { background: none; }
 .doctor-title { font-size: 12px; }
 .doctor-detail { font-size: 11px; color: var(--text-tertiary); line-height: 1.5; margin-top: 2px; word-break: break-word; }
+
+/* Clean shares Doctor's findings list; only the threshold row is its own. */
+.clean-thresholds { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11px; color: var(--text-tertiary); }
+.clean-thresholds label { display: flex; align-items: center; gap: 6px; }
+.clean-thresholds select { font-size: 11px; padding: 2px 4px; }

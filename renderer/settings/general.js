@@ -114,6 +114,11 @@
     window.location.reload()
   })
 
+  // ── Clean: same shape as Doctor — Settings opens the panel, the panel decides. ──
+  if ($('set-clean')) $('set-clean').addEventListener('click', () => {
+    if (window.openClean) window.openClean()
+  })
+
   // ── Doctor: the scan runs in its own panel; Settings only opens it. ──
   if ($('set-doctor')) $('set-doctor').addEventListener('click', () => {
     if (window.openDoctor) window.openDoctor()
