@@ -73,13 +73,20 @@ if [ -n "$LAST" ]; then
 else
   echo "No agent-proposed skill has ever been approved."
 fi
-echo "(patches are not counted — approving one deletes its proposal and leaves no record)"
+echo "(patches are not counted here — see ~/.claude/skills-applied.log)"
+# Not `grep ... | tail -3 || echo`: a pipeline takes tail's status, which is 0 even on
+# empty input, so the fallback would never fire. Capture first, then test.
+ENTRIES=$(grep '^===' ~/.claude/skills-applied.log 2>/dev/null | tail -3)
+if [ -n "$ENTRIES" ]; then echo "$ENTRIES"; else echo "No patch has been applied since the log was introduced."; fi
 ```
 
-The trailing line matters: this only ever sees **new skills**. Patches to existing skills are the
-common outcome, and approving one removes the proposal file without marking the target, so a run of
-approved patches still prints "never". Read a "never" as "no new skill", not as "the loop is dead" —
-check whether patches have been landing before concluding anything from it.
+The trailing lines matter: the scan above only ever sees **new skills**. Patches to existing skills
+are the common outcome, and approving one removes the proposal file without marking the target, so a
+run of approved patches still prints "never". Read a "never" as "no new skill", not as "the loop is
+dead" — the log tells you whether patches have been landing.
+
+An empty log next to skills that were clearly patched means the patches predate the log, or an
+install overwrote them. Both are worth saying out loud rather than reporting "nothing pending".
 
 If nothing has been proposed **or** approved in the last ~3 weeks of active work, say so
 plainly and run both checks below — a loop that never fires almost always fails at one of
@@ -159,9 +166,21 @@ Two checks first, and refuse if either fails:
 and writes atomically:
 
 ```bash
-python3 ~/.claude/skills/lib/patch_apply.py apply ~/.claude/skills-pending/<name>.patch.md
-rm -f ~/.claude/skills-pending/<name>.patch.md
+LOG=~/.claude/skills-applied.log
+PATCH=~/.claude/skills-pending/<name>.patch.md
+# Capture the diff BEFORE applying. Afterwards the anchors no longer match and
+# `patch_apply.py diff` refuses, so there would be nothing left to record.
+DIFF=$(python3 ~/.claude/skills/lib/patch_apply.py diff "$PATCH")
+python3 ~/.claude/skills/lib/patch_apply.py apply "$PATCH"
+{ printf '=== %s  patch  %s\n' "$(date +'%Y-%m-%d %H:%M')" "<name>"; echo "$DIFF"; echo; } >> "$LOG"
+rm -f "$PATCH"
 ```
+
+`~/.claude/skills-applied.log` is append-only and is the ONLY record that a patch was ever
+applied — approval deletes the proposal, and the target file carries no marker. Its job is
+recovery: an installer run, a plugin update or an app reinstall overwrites a bundled skill
+with the upstream copy and silently drops the patch, and without this log there is no way
+to know what was lost, let alone replay it. Never rewrite or prune it.
 
 Then bump the target's `version:` patch number if it has one (some hand-written skills
 carry no frontmatter at all — leave those alone). If the target has no `origin:` field (a

@@ -10,6 +10,18 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.4-alpha] - 2026-09-04
+
+### Added
+- **`/skills-review` now records the patches it applies.** Approving a patch deleted its
+  proposal and marked nothing, so an applied patch left no trace outside the file itself —
+  and the loop-health report, which only ever counted new skills, would say "never" after a
+  run of approved patches. Applying one now appends its diff to an append-only
+  `~/.claude/skills-applied.log` (captured *before* the patch lands, since the anchors stop
+  matching afterwards), and the report reads that log. The log's real job is recovery: when
+  an installer or an app update overwrites a patched skill with the upstream copy, it is the
+  only way to know what was lost and replay it.
+
 ### Fixed
 - **The usage bar painted no background.** It asked for `--surface-bg`, a custom property
   that was never defined anywhere in the stylesheet, so the declaration resolved to nothing.
