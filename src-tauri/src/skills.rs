@@ -182,7 +182,6 @@ pub fn drifted_skills() -> Vec<String> {
 }
 
 #[cfg(test)]
-
 fn skill_names() -> Vec<String> {
     let mut names: Vec<String> = SKILLS
         .dirs()
@@ -372,12 +371,16 @@ pub struct SyncReport {
 ///   was edited outside the installers. Its current content is copied to
 ///   `.archive/<name>.pre-sync-<unix-ts>/` before the overwrite, and reported.
 ///
+/// What one sync pass did to a skills tree: whether the direction guard stood it down,
+/// the skills installed fresh, the ones updated, and the hand-edits copied aside first.
+type SyncOutcome = (bool, Vec<String>, Vec<String>, Vec<BackedUp>);
+
 /// Pure I/O on `dst`, unit-testable against a temp dir.
 fn sync_into(
     dst: &Path,
     manual: bool,
     epoch: i64,
-) -> std::io::Result<(bool, Vec<String>, Vec<String>, Vec<BackedUp>)> {
+) -> std::io::Result<SyncOutcome> {
     if !manual {
         if let Some(installed_epoch) = read_installed_epoch(dst) {
             if epoch > 0 && installed_epoch >= epoch {

@@ -10,7 +10,12 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.3-alpha] - 2026-09-04
+
 ### Fixed
+- **The clippy gate is green again.** It had been failing since 0.11.1 on a complex return
+  type in the skills sync, so the release before this one shipped with a red CI. Named the
+  two multi-value returns and cleared a stray no-op — no behaviour changed.
 - **A session whose terminal process died no longer reads as running for ever.** An
   embedded `claude` that ended on its own — the user typed `exit`, it crashed, something
   killed it from outside — stayed in the process table as `<defunct>` until the app waited

@@ -395,6 +395,15 @@ fn sessions_dir() -> PathBuf {
     crate::config::home().join(".claude").join("sessions")
 }
 
+/// What one pass over `~/.claude/sessions/` found: live pids grouped by the notes.md
+/// their session is registered to, the pidfiles whose process has exited, and the live
+/// sessions no registry entry accounts for.
+type PidfileScan = (
+    std::collections::HashMap<String, Vec<i64>>,
+    Vec<String>,
+    Vec<(i64, String)>,
+);
+
 /// Live pids per notes.md, the pidfiles whose process has exited, and the live sessions
 /// the registry has no entry for. `dir` is a parameter so the scan can be exercised
 /// against a fixture directory — the real one holds whatever is running right now.
@@ -405,7 +414,7 @@ fn sessions_dir() -> PathBuf {
 fn scan_pidfiles(
     dir: &Path,
     active: &Value,
-) -> (std::collections::HashMap<String, Vec<i64>>, Vec<String>, Vec<(i64, String)>) {
+) -> PidfileScan {
     let mut live: std::collections::HashMap<String, Vec<i64>> = std::collections::HashMap::new();
     let mut stale = Vec::new();
     let mut orphaned = Vec::new();
@@ -594,7 +603,6 @@ pub fn doctor_repair(ids: Vec<String>) -> Value {
             KIND_FINISHED_ALIVE => crate::notes_md_under_root(target).and_then(|abs| {
                 let content = std::fs::read_to_string(&abs).map_err(|e| e.to_string())?;
                 crate::atomic_write(&abs, &reopen(&content, &now_stamp()))
-                    .and_then(|()| Ok(()))
             }),
             _ => Err("this finding has no repair".into()),
         };
