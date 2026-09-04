@@ -10,6 +10,20 @@ and this project aims to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Doctor — find what is broken in the session store, and repair what you pick.** Settings →
+  General runs a read-only scan and lists named findings; nothing is written until you tick
+  one. Five checks: a registry entry whose `notes.md` is gone; a frontmatter `session_id`
+  pointing at a conversation that no longer exists while a sibling id survives; a session
+  the notes record as closed or archived while its process is still alive — the state that
+  makes Resume answer *"this session is already active"*; a pidfile whose process has exited;
+  and a hand-edited skill, reported without a repair because the skills sync already archives
+  a copy before it overwrites.
+- Doctor reports only what it can prove. A pruned transcript is ordinary ageing, and a
+  `notes.md` registered under several session ids is the Resume fallback working as designed
+  — neither is damage. On a real 113-session store that is the difference between three
+  findings and sixty-four.
+
 ## [0.11.2-alpha] - 2026-09-03
 
 ### Fixed

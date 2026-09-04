@@ -395,18 +395,21 @@ fn sessions_dir() -> PathBuf {
     crate::config::home().join(".claude").join("sessions")
 }
 
-/// Live pids per notes.md, and the pidfiles whose process has exited.
+/// Live pids per notes.md, the pidfiles whose process has exited, and the live sessions
+/// the registry has no entry for. `dir` is a parameter so the scan can be exercised
+/// against a fixture directory — the real one holds whatever is running right now.
 ///
 /// A pidfile is named for the pid that wrote it, so a dead one is residue from a session
 /// that ended without cleaning up — harmless, but it is what makes `~/.claude/sessions/`
 /// unreadable after a few months.
 fn scan_pidfiles(
+    dir: &Path,
     active: &Value,
 ) -> (std::collections::HashMap<String, Vec<i64>>, Vec<String>, Vec<(i64, String)>) {
     let mut live: std::collections::HashMap<String, Vec<i64>> = std::collections::HashMap::new();
     let mut stale = Vec::new();
     let mut orphaned = Vec::new();
-    let Ok(entries) = std::fs::read_dir(sessions_dir()) else {
+    let Ok(entries) = std::fs::read_dir(dir) else {
         return (live, stale, orphaned);
     };
     for entry in entries.flatten() {
@@ -449,7 +452,7 @@ fn scan_pidfiles(
 /// Read the store and turn it into the facts [`findings`] classifies.
 pub fn snapshot() -> Snapshot {
     let active = crate::reader::load_active_sessions();
-    let (live_pids, stale_pidfiles, unregistered_live) = scan_pidfiles(&active);
+    let (live_pids, stale_pidfiles, unregistered_live) = scan_pidfiles(&sessions_dir(), &active);
 
     // One SessionFacts per notes.md, not per registry entry: several ids sharing a
     // notes.md is the Resume fallback, so the file — not the id — is the unit of repair.
@@ -524,6 +527,28 @@ pub fn rewrite_session_id(content: &str, sid: &str) -> Option<String> {
     Some(content.replacen(line, &format!("{indent}session_id: {sid}"), 1))
 }
 
+fn now_stamp() -> String {
+    crate::local_date_time().map(|(d, t)| format!("{d} {t}")).unwrap_or_default()
+}
+
+/// Make a notes file read as work in progress again — the repair for a session the notes
+/// call finished while its process is still running.
+///
+/// Both halves are needed, and stripping alone is the bug they fix: archiving from Closed
+/// leaves the close entry underneath, so removing the ARCHIVED marker only uncovers it
+/// and `session_history_info` reads "closed" on the very next scan. The finding then
+/// reappears and the repair asks to be clicked twice. So: drop the marker, and if what
+/// surfaces still does not read as open, append an in-progress entry — the same line
+/// `/save-session` writes. Additive; no existing history line is ever rewritten.
+pub fn reopen(content: &str, when: &str) -> String {
+    let stripped = crate::strip_archived(content);
+    if crate::reader::session_history_info(&stripped).0 == "stale" {
+        return stripped;
+    }
+    let line = format!("- {when} (in progress) | reopened by Doctor — the session process is still running");
+    crate::stamp_archived(&stripped, &line)
+}
+
 /// Apply the repairs the user selected, by finding id. Each is attempted independently:
 /// one failure names itself in the report and does not stop the others.
 #[tauri::command(async)]
@@ -568,16 +593,8 @@ pub fn doctor_repair(ids: Vec<String>) -> Value {
             }),
             KIND_FINISHED_ALIVE => crate::notes_md_under_root(target).and_then(|abs| {
                 let content = std::fs::read_to_string(&abs).map_err(|e| e.to_string())?;
-                let stripped = crate::strip_archived(&content);
-                if stripped != content {
-                    return crate::atomic_write(&abs, &stripped); // archived: the marker was the whole problem
-                }
-                // Closed: there is no marker to remove, so the last word has to be a new
-                // one. An appended in-progress entry is what /save-session writes and is
-                // additive — no existing line is rewritten, and the history stays a log.
-                let when = crate::local_date_time().map(|(d, t)| format!("{d} {t}")).unwrap_or_default();
-                let line = format!("- {when} (in progress) | reopened by Doctor — the session process is still running");
-                crate::atomic_write(&abs, &crate::stamp_archived(&content, &line))
+                crate::atomic_write(&abs, &reopen(&content, &now_stamp()))
+                    .and_then(|()| Ok(()))
             }),
             _ => Err("this finding has no repair".into()),
         };
@@ -600,6 +617,37 @@ mod io_tests {
         assert!(after.contains("session_id: live-one"));
         assert!(after.contains("name: x") && after.contains("ticket: T-1"));
         assert!(after.ends_with("# Body\n"), "body untouched");
+    }
+
+    /// Archiving from Closed stacks a marker on top of a close entry. Stripping the
+    /// marker alone uncovers the close line, so the scan reports the same defect again —
+    /// the repair has to land in one click.
+    #[test]
+    fn reopening_an_archived_session_clears_the_close_underneath_it() {
+        let notes = "# S\n\n## Session history\n- 2026-01-02 10:00 | session=abc | did the work\n- 2026-02-01 09:00 | ARCHIVED | archived from the dashboard\n";
+        let once = reopen(notes, "2026-09-04 12:00");
+        assert!(!once.contains("ARCHIVED"));
+        assert_eq!(crate::reader::session_history_info(&once).0, "stale", "one repair is enough");
+        assert_eq!(reopen(&once, "2026-09-04 12:01"), once, "and it is idempotent");
+    }
+
+    /// An archived session whose history was already open needs no new line — the marker
+    /// was the whole problem.
+    #[test]
+    fn reopening_only_strips_the_marker_when_that_suffices() {
+        let notes = "# S\n\n## Session history\n- 2026-01-02 10:00 (in progress) | session=abc | working\n- 2026-02-01 09:00 | ARCHIVED | archived from the dashboard\n";
+        let out = reopen(notes, "2026-09-04 12:00");
+        assert!(!out.contains("ARCHIVED"));
+        assert!(!out.contains("reopened by Doctor"), "nothing to add");
+    }
+
+    #[test]
+    fn reopening_a_closed_session_appends_an_in_progress_entry() {
+        let notes = "# S\n\n## Session history\n- 2026-01-02 10:00 | session=abc | wrapped up\n";
+        let out = reopen(notes, "2026-09-04 12:00");
+        assert!(out.contains("2026-09-04 12:00 (in progress)"));
+        assert!(out.contains("wrapped up"), "the existing log is kept");
+        assert_eq!(crate::reader::session_history_info(&out).0, "stale");
     }
 
     #[test]
@@ -653,5 +701,86 @@ mod unregistered_tests {
         assert_eq!(f[0].kind, KIND_LIVE_UNREGISTERED);
         assert!(f[0].detail.contains("77570") && f[0].detail.contains("/Users/t/repo"));
         assert!(f[0].repair.is_none(), "Doctor never kills a running terminal");
+    }
+}
+
+#[cfg(test)]
+mod pidfile_tests {
+    use super::*;
+    use serde_json::json;
+
+    /// Same idiom as skills.rs: a per-process temp dir, cleared on entry so a rerun
+    /// after a failure starts from nothing.
+    fn tmp(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("ao-doctor-{}-{tag}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn write(dir: &Path, pid: u32, body: Value) {
+        std::fs::write(dir.join(format!("{pid}.json")), body.to_string()).unwrap();
+    }
+
+    /// The only pid guaranteed alive during the test is the test process itself, and the
+    /// only one guaranteed dead is one that cannot be allocated — so those are what the
+    /// fixture uses rather than numbers that happen to be free today.
+    #[test]
+    fn a_live_pidfile_is_attributed_to_its_registered_notes() {
+        let dir = tmp("registered");
+        let me = std::process::id();
+        write(&dir, me, json!({ "sessionId": "sid-a", "cwd": "/w" }));
+        let active = json!({ "sid-a": { "notes_path": "/n/notes.md" } });
+
+        let (live, stale, orphaned) = scan_pidfiles(&dir, &active);
+        assert_eq!(live.get("/n/notes.md"), Some(&vec![me as i64]));
+        assert!(stale.is_empty() && orphaned.is_empty());
+    }
+
+    #[test]
+    fn a_live_pidfile_with_no_registry_entry_is_reported_unregistered() {
+        let dir = tmp("unregistered");
+        let me = std::process::id();
+        write(&dir, me, json!({ "sessionId": "sid-gone", "cwd": "/some/repo" }));
+
+        let (live, _, orphaned) = scan_pidfiles(&dir, &json!({}));
+        assert!(live.is_empty());
+        assert_eq!(orphaned, vec![(me as i64, "/some/repo".to_string())]);
+    }
+
+    /// Background helpers are not sessions anyone navigates to; reporting them as
+    /// unreachable work would be noise on every scan.
+    #[test]
+    fn a_background_helper_is_not_reported() {
+        let dir = tmp("background");
+        write(&dir, std::process::id(), json!({ "sessionId": "x", "background": true, "cwd": "/w" }));
+        let (_, _, orphaned) = scan_pidfiles(&dir, &json!({}));
+        assert!(orphaned.is_empty());
+    }
+
+    #[test]
+    fn a_pidfile_whose_process_is_gone_is_residue() {
+        let dir = tmp("stale");
+        // Above the pid_max any macOS or Linux kernel will hand out, so it cannot be live.
+        write(&dir, 4_294_000_000, json!({ "sessionId": "sid-old", "cwd": "/w" }));
+        let (live, stale, orphaned) = scan_pidfiles(&dir, &json!({}));
+        assert_eq!(stale.len(), 1);
+        assert!(stale[0].ends_with("4294000000.json"));
+        assert!(live.is_empty() && orphaned.is_empty());
+    }
+
+    #[test]
+    fn non_pidfiles_are_ignored() {
+        let dir = tmp("junk");
+        std::fs::write(dir.join("notes.txt"), "x").unwrap();
+        std::fs::write(dir.join("not-a-pid.json"), "{}").unwrap();
+        let (live, stale, orphaned) = scan_pidfiles(&dir, &json!({}));
+        assert!(live.is_empty() && stale.is_empty() && orphaned.is_empty());
+    }
+
+    #[test]
+    fn a_missing_sessions_dir_is_not_an_error() {
+        let (live, stale, orphaned) = scan_pidfiles(Path::new("/no/such/dir"), &json!({}));
+        assert!(live.is_empty() && stale.is_empty() && orphaned.is_empty());
     }
 }
