@@ -72,3 +72,16 @@ describe('audit', () => {
     expect(C.audit(undefined, { now: NOW }).toDelete).toHaveLength(0)
   })
 })
+
+describe('confirmed', () => {
+  // The dialog resolves the STRING 'cancel', which is truthy — a plain falsiness test
+  // here would delete exactly the sessions the user declined to delete.
+  it('accepts only an explicit confirmation', () => expect(C.confirmed('confirm')).toBe(true))
+  it('refuses a cancel, despite the string being truthy', () => expect(C.confirmed('cancel')).toBe(false))
+  it('refuses the extra button', () => expect(C.confirmed('extra')).toBe(false))
+  it('refuses a missing answer', () => {
+    expect(C.confirmed(undefined)).toBe(false)
+    expect(C.confirmed(null)).toBe(false)
+    expect(C.confirmed('')).toBe(false)
+  })
+})

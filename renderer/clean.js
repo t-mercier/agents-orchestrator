@@ -133,9 +133,7 @@
         body: `${archives.length} session(s) will be archived. ${deletes.length} folder(s) will be moved to the Trash — recoverable from the Finder.`,
         confirmLabel: 'Apply',
       })
-      // `confirmAction` resolves 'cancel' on both the button and Esc — a truthy value,
-      // so this has to compare, not test. Getting it wrong here deletes on Cancel.
-      if (choice !== 'confirm') return
+      if (!M().confirmed(choice)) return
     }
     $('clean-apply').disabled = true
     let done = 0
@@ -150,9 +148,28 @@
       try { await window.api.deleteSession(p); done++ } catch (e) { failed.push(`${p}: ${e}`) }
     }
     await audit()
-    const parts = [`Applied ${done} of ${targets.length}.`]
-    if (failed.length) parts.push(`${failed.length} failed — ${failed[0]}`)
-    $('clean-summary').textContent = `${parts.join(' ')} ${$('clean-summary').textContent}`
+    $('clean-summary').textContent = `Applied ${done} of ${targets.length}. ${$('clean-summary').textContent}`
+    // Every failure, named. A count alone ("1 failed") on the one action that moves
+    // folders to the Trash leaves the user unable to tell which session did not go —
+    // and re-ticking blind is how the second attempt does damage the first did not.
+    if (failed.length) {
+      const box = document.createElement('div')
+      const head = document.createElement('div')
+      head.className = 'doctor-group'
+      head.innerHTML = '<strong></strong>'
+      head.querySelector('strong').textContent = `${failed.length} could not be applied`
+      box.appendChild(head)
+      for (const f of failed) {
+        const row = document.createElement('div')
+        row.className = 'doctor-row doctor-row-inert'
+        const d = document.createElement('div')
+        d.className = 'doctor-detail'
+        d.textContent = f
+        row.appendChild(d)
+        box.appendChild(row)
+      }
+      $('clean-list').prepend(box)
+    }
     if (done && window.refreshSessions) window.refreshSessions()
   })
 })()

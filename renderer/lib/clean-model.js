@@ -59,5 +59,16 @@
     return { toArchive, toDelete, undated }
   }
 
-  return { ageInDays, audit, DAY }
+  /// Did the confirm dialog come back as a yes?
+  ///
+  /// `confirmAction` resolves the STRING 'cancel' for both the Cancel button and Esc, and
+  /// a non-empty string is truthy — so a plain `if (!choice)` reads a refusal as consent
+  /// and deletes the folders the user just declined to delete. Extracted here so the one
+  /// comparison standing between Cancel and the Trash is covered by a test rather than by
+  /// having read the dialog's source.
+  function confirmed(choice) {
+    return choice === 'confirm'
+  }
+
+  return { ageInDays, audit, confirmed, DAY }
 })
